@@ -1,12 +1,6 @@
 import sys
 import argparse
 
-parser = argparse.ArgumentParser(description='A script to generate positions and events')
-parser.add_argument('x', type=int, help='Grid topology length')
-parser.add_argument('y', type=int, help='Grid topology width')
-parser.add_argument('filename', type=str, help='Output file name')
-args = parser.parse_args()
-
 def generate_grid_topology(x, y, filename):
     nodes = []
     edges = []
@@ -52,6 +46,12 @@ def generate_grid_topology(x, y, filename):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='A script to generate positions and events')
+    parser.add_argument('x', type=int, help='Grid topology length')
+    parser.add_argument('y', type=int, help='Grid topology width')
+    parser.add_argument('filename', type=str, help='Output file name')
+    args = parser.parse_args()
+
     if len(sys.argv) != 4:
         print("Usage: python generate_grid_topology.py <x> <y> <output_filename>")
         sys.exit(1)

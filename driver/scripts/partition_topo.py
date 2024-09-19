@@ -1,11 +1,6 @@
 import metis
 import argparse
 
-parser = argparse.ArgumentParser(description='A script to generate positions and events')
-parser.add_argument('-f', '--input-file', type=str, required=True, help='Input file name')
-parser.add_argument('-n', '--num-partition', type=int, required=True, help='# of partitions')
-args = parser.parse_args()
-
 def read_graph_from_file(filename):
     """Reads the graph from the old format and returns a node list and adjacency list in the correct format."""
     nodes = []
@@ -101,7 +96,7 @@ def partition_graph(filename, num_partitions):
 
     # Write each subgraph to a file in the new format
     for i in range(num_partitions):
-        tmp_filename_arr = input_filename.strip().split('.')
+        tmp_filename_arr = filename.strip().split('.')
         tmp_filename_arr = tmp_filename_arr[0:1] + [f"sub{i}"] + tmp_filename_arr[1:]
         output_filename = '.'.join(tmp_filename_arr)
         write_subgraph_to_file(output_filename,
@@ -111,6 +106,11 @@ def partition_graph(filename, num_partitions):
         print(f"Subgraph {i} written to {output_filename}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='A script to generate positions and events')
+    parser.add_argument('-f', '--input-file', type=str, required=True, help='Input file name')
+    parser.add_argument('-n', '--num-partition', type=int, required=True, help='# of partitions')
+    args = parser.parse_args()
+
     input_filename = args.input_file
     num_partitions = args.num_partition
 

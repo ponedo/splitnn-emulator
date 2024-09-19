@@ -136,7 +136,7 @@ func main() {
 	fmt.Println("curEdgeNumSeq:", curEdgeNumSeq)
 	fmt.Println("accNodeNum:", accNodeNum)
 	end := time.Now()
-	fmt.Printf("Plan time: %vs\n", end.Sub(start).Seconds())
+	fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
 
 	/* Compute interleaving order of node/link setup */
 	runtime.LockOSThread()
@@ -175,5 +175,5 @@ func main() {
 		fmt.Printf("Error: %v.\n", err)
 	}
 	end = time.Now()
-	fmt.Printf("Network operation time: %vs\n", end.Sub(start).Seconds())
+	fmt.Printf("Network operation time: %.2fs\n", end.Sub(start).Seconds())
 }

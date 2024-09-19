@@ -85,8 +85,8 @@ func NetworkSetup(nm NetworkManager, g *algo.Graph, nodeOrder []int, edgeOrder [
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Node setup time: %vs\n", nodeTotalTime.Seconds())
-	fmt.Printf("Link setup time: %vs\n", linkTotalTime.Seconds())
+	fmt.Printf("Node setup time: %.2fs\n", nodeTotalTime.Seconds())
+	fmt.Printf("Link setup time: %.2fs\n", linkTotalTime.Seconds())
 	return nil
 }
 
@@ -117,7 +117,7 @@ func NetworkDestroy(nm NetworkManager, g *algo.Graph, nodeOrder []int, edgeOrder
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Node Destroy time: %vs\n", nodeTotalTime.Seconds())
-	fmt.Printf("Link Destroy time: %vs\n", linkTotalTime.Seconds())
+	fmt.Printf("Node Destroy time: %.2fs\n", nodeTotalTime.Seconds())
+	fmt.Printf("Link Destroy time: %.2fs\n", linkTotalTime.Seconds())
 	return nil
 }

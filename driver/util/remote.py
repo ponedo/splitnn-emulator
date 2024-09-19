@@ -43,9 +43,9 @@ class RemoteMachine:
             # If sudo is needed, prepend the command with sudo -S and provide the password via stdin
             if use_sudo:
                 if output_file:
-                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -S {command} > {output_file} 2>&1"
+                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -E -S {command} > {output_file} 2>&1"
                 else:
-                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -S {command}"
+                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -E -S {command}"
             else:
                 if output_file:
                     full_command = f"cd {self.working_dir} && {command} > {output_file} 2>&1"

@@ -3,47 +3,45 @@ import time
 import json
 import argparse
 import subprocess
+from scripts.partition_topo import partition_graph
 from util.remote import RemoteMachine, \
     execute_command_on_multiple_machines, send_file_to_multiple_machines
 
-parser = argparse.ArgumentParser(description='Execute a batch of experiments')
-args = parser.parse_args()
-
 topos = [
     ["grid", "10", "10"],
-    ["grid", "30", "30"],
-    ["grid", "20", "20"],
-    ["grid", "40", "40"],
-    ["grid", "50", "50"],
-    ["grid", "60", "60"],
-    ["grid", "70", "70"],
-    ["grid", "75", "75"],
-    ["grid", "80", "80"],
-    ["grid", "85", "85"],
-    ["grid", "90", "90"],
-    ["grid", "95", "95"],
-    ["grid", "100", "100"],
-    ["clos", "8"],
-    ["clos", "12"],
-    ["clos", "16"],
-    ["clos", "20"],
-    ["clos", "24"],
-    ["clos", "28"],
-    ["clos", "32"],
+    # ["grid", "30", "30"],
+    # ["grid", "20", "20"],
+    # ["grid", "40", "40"],
+    # ["grid", "50", "50"],
+    # ["grid", "60", "60"],
+    # ["grid", "70", "70"],
+    # ["grid", "75", "75"],
+    # ["grid", "80", "80"],
+    # ["grid", "85", "85"],
+    # ["grid", "90", "90"],
+    # ["grid", "95", "95"],
+    # ["grid", "100", "100"],
+    # ["clos", "8"],
+    # ["clos", "12"],
+    # ["clos", "16"],
+    # ["clos", "20"],
+    # ["clos", "24"],
+    # ["clos", "28"],
+    # ["clos", "32"],
 ]
 
 nms = [
     "iprpt",
-    "iprbr",
-    "ntlpt",
-    "ntlbr",
-    "ntlptlu",
-    "ntlbrlu",
+    # "iprbr",
+    # "ntlpt",
+    # "ntlbr",
+    # "ntlptlu",
+    # "ntlbrlu",
 ]
 
 algos = [
     "naive",
-    "dynamic",
+    # "dynamic",
 ]
 
 # nsnums = []
@@ -54,10 +52,15 @@ def get_vn_manage_cmd(exe_path, operation, subtopo_filename, nm, algo, phy_intf,
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Execute a batch of experiments')
+    args = parser.parse_args()
+
     # Get the absolute path of the currently executing script
     current_file_path = os.path.abspath(__file__)
     driver_workdir = os.path.dirname(current_file_path)
     os.chdir(driver_workdir) # Change the working directory
+    env = os.environ.copy()
+    env["METIS_DLL"]="~/.local/lib/libmetis.so"
 
     # Read configuration of servers
     with open('server_config.json', 'r') as f:
@@ -75,20 +78,20 @@ if __name__ == "__main__":
 
     # Config servers on remote machines
     server_config_src_path = os.path.join(driver_workdir, "server_config.json")
-    server_config_dst_paths = {
+    server_config_src_dst_paths = {
         server["ipAddr"]: (
             server_config_src_path,
             os.path.join(server["infraWorkDir"], "server_config.json"), \
         ) for server in servers
     }
     send_file_to_multiple_machines(
-        remote_machines, server_config_dst_paths)
+        remote_machines, server_config_src_dst_paths)
     
     # Recompile virtual network manager on all machines
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
-                "source ~/.bashrc && go env; make", server["infraWorkDir"], None, False
+                "make", server["infraWorkDir"], None, False
             ) for server in servers
         }
     )
@@ -107,12 +110,13 @@ if __name__ == "__main__":
         result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
 
         # Partition topology
-        script_path = os.path.join(driver_workdir, "scripts", f"partition_topo.py")
-        partition_topology_cmd = ["python3", script_path, "-f", topo_filepath, "-n", f"{len(servers)}"]
-        result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
+        partition_graph(topo_filepath, len(servers))
+        # script_path = os.path.join(driver_workdir, "scripts", f"partition_topo.py")
+        # partition_topology_cmd = ["python3", script_path, "-f", topo_filepath, "-n", f"{len(servers)}"]
+        # result = subprocess.run(partition_topology_cmd, capture_output=True, text=True, env=env)
 
         # Send sub-topo to servers
-        subtopo_filepaths = {}
+        subtopo_src_dst_filepaths = {}
         for i, server in enumerate(servers):
             topo_filename = os.path.basename(topo_filepath)
             topo_filename_arr = topo_filename.split('.')
@@ -123,44 +127,45 @@ if __name__ == "__main__":
             subtopo_filename = '.'.join(subtopo_filename_arr)
             subtopo_src_filepath = os.path.join(os.path.dirname(topo_filepath), subtopo_filename)
             subtopo_dst_filepath = os.path.join(server["infraWorkDir"], "tmp", subtopo_filename)
-            subtopo_filepaths[server["ipAddr"]] = (subtopo_src_filepath, subtopo_dst_filepath)
+            subtopo_src_dst_filepaths[server["ipAddr"]] = (subtopo_src_filepath, subtopo_dst_filepath)
         send_file_to_multiple_machines(
-            remote_machines, subtopo_filepaths)
+            remote_machines, subtopo_src_dst_filepaths)
         
-        # # Run experiments for different network managers and algorithms
-        # for nm in nms:
-        #     for algo in algos:
-        #         # Prepare setup and destroy commands
-        #         setup_commands, destroy_commands = {}, {}
-        #         for i, server in enumerate(servers):
-        #             exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
-        #             subtopo_dst_filename = subtopo_filepaths[server["ipAddr"]]
-        #             subtopo_filename = os.path.basename(subtopo_dst_filename)
-        #             setup_command = get_vn_manage_cmd(
-        #                 os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-        #                 "setup", subtopo_dst_filename, nm, algo,
-        #                 server["phyIntf"], server_config_dst_paths[server["ipAddr"]]
-        #             )
-        #             setup_command = get_vn_manage_cmd(
-        #                 os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-        #                 "destroy", subtopo_dst_filename, nm, algo,
-        #                 server["phyIntf"], server_config_dst_paths[server["ipAddr"]]
-        #             )
-        #             setup_log_path = os.path.join(
-        #                 server["infraWorkDir"], "log", f"{nm}.{algo}.setup.{subtopo_filename}")
-        #             destroy_log_path = os.path.join(
-        #                 server["infraWorkDir"], "log", f"{nm}.{algo}.destroy.{subtopo_filename}")
-        #             setup_commands.append((setup_command, server["infraWorkDir"], setup_log_path, True))
-        #             destroy_commands.append((setup_command, server["infraWorkDir"], destroy_log_path, True))
+        # Run experiments for different network managers and algorithms
+        for nm in nms:
+            for algo in algos:
+                # Prepare setup and destroy commands
+                setup_commands, destroy_commands = {}, {}
+                for i, server in enumerate(servers):
+                    exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
+                    subtopo_dst_filename = subtopo_src_dst_filepaths[server["ipAddr"]][1]
+                    server_config_dst_filepath = server_config_src_dst_paths[server["ipAddr"]][1]
+                    subtopo_filename = os.path.basename(subtopo_dst_filename)
+                    setup_command = get_vn_manage_cmd(
+                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                        "setup", subtopo_dst_filename, nm, algo,
+                        server["phyIntf"], server_config_dst_filepath
+                    )
+                    destroy_command = get_vn_manage_cmd(
+                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                        "destroy", subtopo_dst_filename, nm, algo,
+                        server["phyIntf"], server_config_dst_filepath
+                    )
+                    setup_log_path = os.path.join(
+                        server["infraWorkDir"], "log", f"{nm}.{algo}.setup.{subtopo_filename}")
+                    destroy_log_path = os.path.join(
+                        server["infraWorkDir"], "log", f"{nm}.{algo}.destroy.{subtopo_filename}")
+                    setup_commands[server["ipAddr"]] = (setup_command, server["infraWorkDir"], setup_log_path, True)
+                    destroy_commands[server["ipAddr"]] = (destroy_command, server["infraWorkDir"], destroy_log_path, True)
 
-        #         # Setup virtual network
-        #         execute_command_on_multiple_machines(remote_machines, setup_commands)
+                # Setup virtual network
+                execute_command_on_multiple_machines(remote_machines, setup_commands)
 
-        #         # Wait for a while
-        #         time.sleep(30)
+                # Wait for a while
+                time.sleep(30)
 
-        #         # Destroy virtual network
-        #         execute_command_on_multiple_machines(remote_machines, destroy_commands)
+                # Destroy virtual network
+                execute_command_on_multiple_machines(remote_machines, destroy_commands)
 
     # Close connection
     for remote_machine in remote_machines:
