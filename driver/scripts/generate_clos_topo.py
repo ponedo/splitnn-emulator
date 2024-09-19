@@ -2,8 +2,8 @@ import yaml
 import argparse
 
 parser = argparse.ArgumentParser(description='Generate CLOS topology YAML for Containerlab.')
-parser.add_argument('k', type=int, required=True, help='Fat Tree parameter (number of ports per switch)')
-parser.add_argument('filename', type=str, help='Output file name')
+parser.add_argument('-k', type=int, required=True, help='Fat Tree parameter (number of ports per switch)')
+parser.add_argument('-f', '--filename', type=str, required=True, help='Output file name')
 args = parser.parse_args()
 
 def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
@@ -58,8 +58,8 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
     for pod_id in range(1, p + 1):
         for leaf_id in range(1, leaf_per_pod + 1):
             for spine_id in range(1, spine_per_pod + 1):
-                node_id_i = name2id[f'pod{pod_id}_leaf{leaf_id}:e1-{spine_id}']
-                node_id_j = name2id[f'pod{pod_id}_spine{spine_id}:e1-{leaf_id}']
+                node_id_i = name2id[f'pod{pod_id}_leaf{leaf_id}']
+                node_id_j = name2id[f'pod{pod_id}_spine{spine_id}']
                 edges.append((node_id_i, node_id_j))
 
     # Create spine to superspine links (shared across pods)
@@ -67,8 +67,8 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
         superspine_id = 1
         for spine_id in range(1, spine_per_pod + 1):
             for i in range(1, k // 2 + 1):
-                node_id_i = name2id[f'pod{pod_id}_spine{spine_id}:e1-{i + leaf_per_pod}']
-                node_id_j = name2id[f'superspine{superspine_id}:e1-{pod_id}']
+                node_id_i = name2id[f'pod{pod_id}_spine{spine_id}']
+                node_id_j = name2id[f'superspine{superspine_id}']
                 edges.append((node_id_i, node_id_j))
                 superspine_id += 1
 
@@ -77,8 +77,8 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
     for pod_id in range(1, p + 1):
         for leaf_id in range(1, leaf_per_pod + 1):
             for client_id in range(1, c + 1):
-                node_id_i = name2id[f'pod{pod_id}_leaf{leaf_id}_client{client_id}:eth1']
-                node_id_j = name2id[f'pod{pod_id}_leaf{leaf_id}:e1-{spine_per_pod + client_id}']
+                node_id_i = name2id[f'pod{pod_id}_leaf{leaf_id}_client{client_id}']
+                node_id_j = name2id[f'pod{pod_id}_leaf{leaf_id}']
                 edges.append((node_id_i, node_id_j))
 
     print(f"Writing topology into file...")
@@ -92,7 +92,7 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
 
     print(f"Topology generated successfully.")
 
-    total_nodes = (5 / 4) * (k ** 2) + (k ** 3) / 4
+    total_nodes = int((5 / 4) * (k ** 2) + (k ** 3) / 4)
     print(f"Total nodes: {total_nodes} ({superspine_num + p * (spine_per_pod + leaf_per_pod) + c * leaf_per_pod * p})")
 
 

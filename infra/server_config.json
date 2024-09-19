@@ -3,12 +3,12 @@
         {
             "ipAddr": "10.10.30.146",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "agile-emulator-exp/interleave_algo_test/infra"
+            "infraWorkDir": "/home/cnic/agile-emulator-exp/interleave_algo_test/infra"
         },
         {
             "ipAddr": "10.10.30.148",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "agile-emulator-exp/interleave_algo_test/infra"
+            "infraWorkDir": "/home/cnic/agile-emulator-exp/interleave_algo_test/infra"
         }
     ]
 }
