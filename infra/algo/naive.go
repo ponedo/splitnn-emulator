@@ -32,13 +32,12 @@ func (g *Graph) NaiveOrder() ([]int, [][][4]int, []int) {
 			j := neighbor[0]
 			serverID := neighbor[1]
 			vxlanID := neighbor[2]
-			if i < j {
-				allDanglingEdges = append(allDanglingEdges, [4]int{i, j, serverID, vxlanID})
-			}
+			// if i < j {
+			allDanglingEdges = append(allDanglingEdges, [4]int{i, j, serverID, vxlanID})
+			// }
 		}
 	}
 	allEdges := append(allInternalEdges, allDanglingEdges...)
-
 	edgeOrder = append(edgeOrder, allEdges)
 	curEdgeNumSeq = append(curEdgeNumSeq, len(allEdges))
 

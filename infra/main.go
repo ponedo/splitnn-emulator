@@ -138,6 +138,12 @@ func main() {
 	end := time.Now()
 	fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
 
+	edgeSum := 0
+	for _, edgeOrderElement := range edgeOrder {
+		edgeSum += len(edgeOrderElement)
+	}
+	fmt.Println("edgeSum:", edgeSum)
+
 	/* Compute interleaving order of node/link setup */
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()

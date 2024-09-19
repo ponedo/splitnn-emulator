@@ -144,6 +144,35 @@ func (ntlm *NetlinkBridgeLookupNetworkManager) SetupInternalLink(nodeIdi int, no
 		return fmt.Errorf("failed to create VethPeer in nodejNetNs: %s", err)
 	}
 
+	/* Set the other sides of veths up */
+	var vethIni, vethInj netlink.Link
+	err = netns.Set(nodeiNetNs)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
+	vethIni, err = netlink.LinkByName(
+		"eth" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", vethIni, err)
+	}
+	err = netlink.LinkSetUp(vethIni)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetUp: %s", err)
+	}
+	err = netns.Set(nodejNetNs)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
+	vethInj, err = netlink.LinkByName(
+		"eth" + strconv.Itoa(nodeIdi))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", vethInj, err)
+	}
+	err = netlink.LinkSetUp(vethInj)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetUp: %s", err)
+	}
+
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
 	if err != nil {
@@ -287,6 +316,22 @@ func (ntlm *NetlinkBridgeLookupNetworkManager) SetupExternalLink(nodeIdi int, no
 	err = netlink.LinkAdd(vethi)
 	if err != nil {
 		return fmt.Errorf("failed to create VethPeer in nodeiNetNs: %s", err)
+	}
+
+	/* Set the other side of veth up */
+	var vethIni netlink.Link
+	err = netns.Set(nodeiNetNs)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
+	vethIni, err = netlink.LinkByName(
+		"eth" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", vethIni, err)
+	}
+	err = netlink.LinkSetUp(vethIni)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
 
 	/* Set Vxlan master and set Vxlan up */

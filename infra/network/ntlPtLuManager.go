@@ -88,7 +88,7 @@ func (ntlm *NetlinkPassthroughLookupNetworkManager) SetupInternalLink(nodeIdi in
 	/* Create Veth Peer */
 	veth := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name:  "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
+			Name:  "eth" + strconv.Itoa(nodeIdj),
 			MTU:   1450,
 			Flags: net.FlagUp,
 		},
@@ -98,6 +98,22 @@ func (ntlm *NetlinkPassthroughLookupNetworkManager) SetupInternalLink(nodeIdi in
 	err = netlink.LinkAdd(veth)
 	if err != nil {
 		return fmt.Errorf("failed to create VethPeer: %s", err)
+	}
+
+	/* Set the other side of veth up */
+	err = netns.Set(nodejNetNs)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
+	var vethj netlink.Link
+	vethj, err = netlink.LinkByName(
+		"eth" + strconv.Itoa(nodeIdi))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", vethj, err)
+	}
+	err = netlink.LinkSetUp(vethj)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
 
 	/* Set NetNs Back */
@@ -158,7 +174,8 @@ func (ntlm *NetlinkPassthroughLookupNetworkManager) SetupExternalLink(nodeIdi in
 	/* Create Vxlan */
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: "eth" + strconv.Itoa(nodeIdj),
+
+			Name: "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
 		},
 		VxlanId:      vxlanID,
 		VtepDevIndex: LocalPhyIntfNl.Attrs().Index,
