@@ -25,30 +25,36 @@ class RemoteMachine:
             return None
         return self
 
-    def execute_command(self, command, output_file=None):
+    def execute_command(self, command, output_file=None, use_sudo=False):
         """
-        Executes a command with privilege on the remote machine.
+        Executes a command on the remote machine.
         Optionally redirects stdout to a file on the remote machine.
+        Optionally runs the command with sudo privileges.
         
         :param command: The command to execute.
         :param output_file: Path to the file on the remote machine where stdout should be redirected.
+        :param use_sudo: If True, the command will be executed with sudo privileges.
         """
         if self.ssh is None:
             print("Not connected to any remote machine.")
             return None
 
         try:
-            # If an output file is provided, redirect stdout to that file
-            if output_file:
-                full_command = f"cd {self.working_dir} && sudo {command} > {output_file} 2>&1"
+            # If sudo is needed, prepend the command with sudo -S and provide the password via stdin
+            if use_sudo:
+                if output_file:
+                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -S {command} > {output_file} 2>&1"
+                else:
+                    full_command = f"cd {self.working_dir} && echo {self.password} | sudo -S {command}"
             else:
-                full_command = f"cd {self.working_dir} && sudo {command}"
+                if output_file:
+                    full_command = f"cd {self.working_dir} && {command} > {output_file} 2>&1"
+                else:
+                    full_command = f"cd {self.working_dir} && {command}"
 
             stdin, stdout, stderr = self.ssh.exec_command(full_command)
-            stdin.write(self.password + '\n')
-            stdin.flush()
 
-            # Even though stdout is redirected, you still may want to capture stderr in case of errors
+            # Capture stderr for any potential errors
             errors = stderr.read().decode()
 
             if errors:
@@ -62,6 +68,7 @@ class RemoteMachine:
         except Exception as e:
             print(f"Failed to execute command: {str(e)}")
             return None
+
 
     def send_file(self, local_file_path, remote_file_path):
         """
@@ -94,20 +101,16 @@ class RemoteMachine:
 def execute_command_on_multiple_machines(machines, commands):
     """
     Executes commands concurrently on multiple machines, with each command executed in its own working directory.
-    Supports both formats for the commands:
-      1. A string (command) - outputs to stdout, executed in a default working directory.
-      2. A tuple (command, working_directory, output_file) - command is executed in the specified directory, and output is optionally redirected to a file.
+    Optionally executes the commands with sudo privileges.
     
     :param machines: A list of RemoteMachine objects.
-    :param commands: A dictionary where the key is the machine hostname and the value is either:
-                     - A string representing the command (output will be printed).
-                     - A tuple (command, working_directory, output_file) where the command is executed in the working_directory,
-                       and stdout is redirected to output_file on the remote machine.
+    :param commands: A dictionary where the key is the machine hostname and the value is a tuple:
+                     (command, working_directory, output_file, use_sudo).
     """
-    def execute_on_machine(machine, command, working_dir, output_file=None):
+    def execute_on_machine(machine, command, working_dir, output_file=None, use_sudo=False):
         # Change the working directory before executing the command
         machine.working_dir = working_dir
-        return machine.execute_command(command, output_file)
+        return machine.execute_command(command, output_file, use_sudo)
 
     results = {}
     with ThreadPoolExecutor(max_workers=len(machines)) as executor:
@@ -117,17 +120,17 @@ def execute_command_on_multiple_machines(machines, commands):
             if machine.hostname in commands:
                 command_info = commands[machine.hostname]
                 
-                # If command_info is a tuple, it includes the working directory (and optionally an output file)
-                if isinstance(command_info, tuple):
-                    if len(command_info) == 3:
-                        command, working_dir, output_file = command_info
-                    else:
-                        command, working_dir = command_info
-                        output_file = None
+                # Parse the command tuple, which now includes the use_sudo flag
+                if len(command_info) == 4:
+                    command, working_dir, output_file, use_sudo = command_info
+                elif len(command_info) == 3:
+                    command, working_dir, output_file = command_info
+                    use_sudo = False
                 else:
-                    command, working_dir, output_file = command_info, '/tmp', None  # Default working directory
+                    command, working_dir = command_info
+                    output_file, use_sudo = None, False
 
-                future_to_machine[executor.submit(execute_on_machine, machine, command, working_dir, output_file)] = machine
+                future_to_machine[executor.submit(execute_on_machine, machine, command, working_dir, output_file, use_sudo)] = machine
 
         # Collect results as they complete
         for future in as_completed(future_to_machine):
@@ -137,7 +140,7 @@ def execute_command_on_multiple_machines(machines, commands):
                 if result:
                     results[machine.hostname] = result
                 else:
-                    if isinstance(commands[machine.hostname], tuple) and len(commands[machine.hostname]) == 3:
+                    if isinstance(commands[machine.hostname], tuple) and len(commands[machine.hostname]) >= 3:
                         results[machine.hostname] = f"Output redirected to {commands[machine.hostname][2]}"
                     else:
                         results[machine.hostname] = "Command executed successfully"

@@ -64,7 +64,6 @@ def partition_graph(filename, num_partitions):
 
     # Partition the graph into num_partitions parts using METIS
     _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions)
-    print(parts)
 
     # Collect nodes and edges for each partition
     subgraphs = {i: {'nodes': [], 'edges': [], 'dangling': []} for i in range(num_partitions)}

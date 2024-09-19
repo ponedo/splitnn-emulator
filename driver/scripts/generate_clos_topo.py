@@ -2,8 +2,8 @@ import yaml
 import argparse
 
 parser = argparse.ArgumentParser(description='Generate CLOS topology YAML for Containerlab.')
-parser.add_argument('-k', type=int, required=True, help='Fat Tree parameter (number of ports per switch)')
-parser.add_argument('-f', '--filename', type=str, required=True, help='Output file name')
+parser.add_argument('k', type=int, required=True, help='Fat Tree parameter (number of ports per switch)')
+parser.add_argument('f', '--filename', type=str, required=True, help='Output file name')
 args = parser.parse_args()
 
 def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):

@@ -10,7 +10,7 @@ all: build
 build:
 	@echo "Building the project..."
 	@mkdir -p $(BIN_DIR)
-	@go build -o $(BIN_DIR)/$(BINARY_NAME) $(SRC_DIR)
+	@/usr/local/go/bin/go build -o $(BIN_DIR)/$(BINARY_NAME) $(SRC_DIR)
 
 # Clean target to remove binaries
 clean:
