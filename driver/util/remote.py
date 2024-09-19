@@ -93,34 +93,41 @@ class RemoteMachine:
 
 def execute_command_on_multiple_machines(machines, commands):
     """
-    Executes commands concurrently on multiple machines and waits until all machines finish.
+    Executes commands concurrently on multiple machines, with each command executed in its own working directory.
     Supports both formats for the commands:
-      1. A string (command) - outputs to stdout.
-      2. A tuple (command, output_file) - redirects output to the specified file on the remote machine.
+      1. A string (command) - outputs to stdout, executed in a default working directory.
+      2. A tuple (command, working_directory, output_file) - command is executed in the specified directory, and output is optionally redirected to a file.
     
     :param machines: A list of RemoteMachine objects.
     :param commands: A dictionary where the key is the machine hostname and the value is either:
                      - A string representing the command (output will be printed).
-                     - A tuple (command, output_file) where the command is executed, and stdout is redirected to the output_file on the remote machine.
+                     - A tuple (command, working_directory, output_file) where the command is executed in the working_directory,
+                       and stdout is redirected to output_file on the remote machine.
     """
-    def execute_on_machine(machine, command, output_file=None):
+    def execute_on_machine(machine, command, working_dir, output_file=None):
+        # Change the working directory before executing the command
+        machine.working_dir = working_dir
         return machine.execute_command(command, output_file)
 
     results = {}
     with ThreadPoolExecutor(max_workers=len(machines)) as executor:
-        # Submit tasks to execute commands on machines
+        # Submit tasks to execute different commands on different machines with custom working directories
         future_to_machine = {}
         for machine in machines:
             if machine.hostname in commands:
                 command_info = commands[machine.hostname]
                 
-                # If command_info is a tuple, it includes output redirection
+                # If command_info is a tuple, it includes the working directory (and optionally an output file)
                 if isinstance(command_info, tuple):
-                    command, output_file = command_info
+                    if len(command_info) == 3:
+                        command, working_dir, output_file = command_info
+                    else:
+                        command, working_dir = command_info
+                        output_file = None
                 else:
-                    command, output_file = command_info, None  # No output file, print stdout
-                
-                future_to_machine[executor.submit(execute_on_machine, machine, command, output_file)] = machine
+                    command, working_dir, output_file = command_info, '/tmp', None  # Default working directory
+
+                future_to_machine[executor.submit(execute_on_machine, machine, command, working_dir, output_file)] = machine
 
         # Collect results as they complete
         for future in as_completed(future_to_machine):
@@ -130,8 +137,8 @@ def execute_command_on_multiple_machines(machines, commands):
                 if result:
                     results[machine.hostname] = result
                 else:
-                    if isinstance(commands[machine.hostname], tuple):
-                        results[machine.hostname] = f"Output redirected to {commands[machine.hostname][1]}"
+                    if isinstance(commands[machine.hostname], tuple) and len(commands[machine.hostname]) == 3:
+                        results[machine.hostname] = f"Output redirected to {commands[machine.hostname][2]}"
                     else:
                         results[machine.hostname] = "Command executed successfully"
             except Exception as e:

@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import argparse
 import subprocess
@@ -81,7 +82,16 @@ if __name__ == "__main__":
     }
     send_file_to_multiple_machines(
         remote_machines, server_config_dst_paths)
-
+    
+    # Recompile virtual network manager on all machines
+    execute_command_on_multiple_machines(
+        remote_machines, {
+            server["ipAddr"]: (
+                "make", server["infraWorkDir"]
+            ) for server in servers
+        }
+    )
+    
     # Run experiments for different topology
     for topo in topos:
         topo_name = topo[0]
@@ -116,19 +126,38 @@ if __name__ == "__main__":
         send_file_to_multiple_machines(
             remote_machines, subtopo_filepaths)
         
-        # Build virtual network
-        commands = {}
-        for i, server in enumerate(servers):
-            build_command = 
-            output_path = 
-            commands[server["ipAddr"]] = (build_command, output_path)
-            {
-        'remote_ip_1': ('apt-get update', '/opt/update_output.txt'),
-        'remote_ip_2': ('ls -l /opt', '/opt/ls_output.txt')
-    }
+        # Run experiments for different network managers and algorithms
+        for nm in nms:
+            for algo in algos:
+                # Prepare setup and destroy commands
+                setup_commands, destroy_commands = {}, {}
+                for i, server in enumerate(servers):
+                    exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
+                    subtopo_dst_filename = subtopo_filepaths[server["ipAddr"]]
+                    subtopo_filename = os.path.basename(subtopo_dst_filename)
+                    setup_command = get_vn_manage_cmd(
+                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                        "setup", subtopo_dst_filename, nm, algo,
+                        server["phyIntf"], server_config_dst_paths[server["ipAddr"]]
+                    )
+                    setup_command = get_vn_manage_cmd(
+                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                        "destroy", subtopo_dst_filename, nm, algo,
+                        server["phyIntf"], server_config_dst_paths[server["ipAddr"]]
+                    )
+                    log_path = os.path.join(
+                        server["infraWorkDir"], "log", f"{nm}.{algo}.{subtopo_filename}")
+                    setup_commands.append((setup_command, server["infraWorkDir"], log_path))
+                    destroy_commands.append((setup_command, server["infraWorkDir"], log_path))
 
+                # Setup virtual network
+                execute_command_on_multiple_machines(remote_machines, setup_commands)
 
+                # Wait for a while
+                time.sleep(30)
 
+                # Destroy virtual network
+                execute_command_on_multiple_machines(remote_machines, destroy_commands)
 
     # Close connection
     for remote_machine in remote_machines:
