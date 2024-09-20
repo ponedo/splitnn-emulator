@@ -238,14 +238,14 @@ func (ntlm *NetlinkPassthroughNetworkManager) DestroyExternalLink(nodeIdi int, n
 	// if err != nil {
 	// 	return fmt.Errorf("failed to netns.Set: %s", err)
 	// }
-	// vxlan, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName: %s: %s", vxlan, err)
-	// }
-	// err = netlink.LinkDel(vxlan)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete vxlan: %s", err)
-	// }
+	vxlan, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", vxlan, err)
+	}
+	err = netlink.LinkDel(vxlan)
+	if err != nil {
+		return fmt.Errorf("failed to delete vxlan: %s", err)
+	}
 
 	// /* Set NetNs Back */
 	// err = netns.Set(hostNetns)
