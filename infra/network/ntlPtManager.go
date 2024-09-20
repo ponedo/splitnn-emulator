@@ -79,7 +79,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) SetupInternalLink(nodeIdi int, nod
 		return fmt.Errorf("failed to netns.Get: %s", err)
 	}
 
-	/* Switch to the node's NetNs */
+	/* Switch to the nodei's NetNs */
 	nodeiNetNs, err = ntlm.getNsHandle("itl_test" + strconv.Itoa(nodeIdi))
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) SetupInternalLink(nodeIdi int, nod
 	vethj, err = netlink.LinkByName(
 		"eth" + strconv.Itoa(nodeIdi))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethj, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdi), err)
 	}
 	err = netlink.LinkSetUp(vethj)
 	if err != nil {
@@ -141,7 +141,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) DestroyInternalLink(nodeIdi int, n
 		return fmt.Errorf("failed to netns.Get: %s", err)
 	}
 
-	/* Switch to Node's NetNs and destroy veth */
+	/* Switch to nodey's NetNs and destroi veth */
 	nodeiNetNs, err = ntlm.getNsHandle("itl_test" + strconv.Itoa(nodeIdi))
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) DestroyInternalLink(nodeIdi int, n
 	}
 	veth, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", veth, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkDel(veth)
 	if err != nil {
@@ -179,7 +179,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) SetupExternalLink(nodeIdi int, nod
 	/* Create Vxlan */
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
+			Name: "eth" + strconv.Itoa(nodeIdj),
 		},
 		VxlanId:      vxlanID,
 		VtepDevIndex: LocalPhyIntfNl.Attrs().Index,
@@ -237,7 +237,7 @@ func (ntlm *NetlinkPassthroughNetworkManager) DestroyExternalLink(nodeIdi int, n
 	}
 	vxlan, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vxlan, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkDel(vxlan)
 	if err != nil {

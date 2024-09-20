@@ -177,7 +177,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	vethIni, err = netlink.LinkByName(
 		"eth" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethIni, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkSetUp(vethIni)
 	if err != nil {
@@ -190,7 +190,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	vethInj, err = netlink.LinkByName(
 		"eth" + strconv.Itoa(nodeIdi))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethInj, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdi), err)
 	}
 	err = netlink.LinkSetUp(vethInj)
 	if err != nil {
@@ -233,7 +233,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 	vethi, err := netlink.LinkByName(
 		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+		return fmt.Errorf("failed to LinkByName vethi: %s: %s",
+			"eth-"+strconv.Itoa(nodeIdi)+"-"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkDel(vethi)
 	if err != nil {
@@ -242,7 +243,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 	vethj, err := netlink.LinkByName(
 		"eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName vethj: %s: %s", vethj, err)
+		return fmt.Errorf("failed to LinkByName vethj: %s: %s",
+			"eth-"+strconv.Itoa(nodeIdj)+"-"+strconv.Itoa(nodeIdi), err)
 	}
 	err = netlink.LinkDel(vethj)
 	if err != nil {
@@ -260,7 +262,7 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 	}
 	br, err := netlink.LinkByName(brName)
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName br: %s: %s", br, err)
+		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
 	}
 	err = netlink.LinkDel(br)
 	if err != nil {
@@ -371,7 +373,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	vethIni, err = netlink.LinkByName(
 		"eth" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethIni, err)
+		return fmt.Errorf("failed to LinkByName: %s: %s", "eth"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkSetUp(vethIni)
 	if err != nil {
@@ -414,7 +416,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	vethi, err := netlink.LinkByName(
 		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+		return fmt.Errorf("failed to LinkByName vethi: %s: %s",
+			"eth-"+strconv.Itoa(nodeIdi)+"-"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkDel(vethi)
 	if err != nil {
@@ -428,7 +431,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	vxlan, err := netlink.LinkByName(
 		"vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName vxlan: %s: %s", vxlan, err)
+		return fmt.Errorf("failed to LinkByName vxlan: %s: %s",
+			"vxl-"+strconv.Itoa(nodeIdi)+"-"+strconv.Itoa(nodeIdj), err)
 	}
 	err = netlink.LinkDel(vxlan)
 	if err != nil {
@@ -446,7 +450,7 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	}
 	br, err := netlink.LinkByName(brName)
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName br: %s: %s", br, err)
+		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
 	}
 	err = netlink.LinkDel(br)
 	if err != nil {
