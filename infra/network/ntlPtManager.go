@@ -134,39 +134,36 @@ func (ntlm *NetlinkPassthroughNetworkManager) SetupInternalLink(nodeIdi int, nod
 
 func (ntlm *NetlinkPassthroughNetworkManager) DestroyInternalLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
-	// var hostNetns, nodeiNetNs netns.NsHandle
+	var hostNetns, nodeiNetNs netns.NsHandle
 
-	// hostNetns, err = netns.Get()
-	// if err != nil {
-	// 	return fmt.Errorf("failed to netns.Get: %s", err)
-	// }
+	hostNetns, err = netns.Get()
+	if err != nil {
+		return fmt.Errorf("failed to netns.Get: %s", err)
+	}
 
-	// /* Switch to Node's NetNs and destroy veth */
-	// nodeiNetNs, err = ntlm.getNsHandle("itl_test" + strconv.Itoa(nodeIdi))
-	// if err != nil {
-	// 	return err
-	// }
-	// if !ok {
-	// 	return fmt.Errorf("failed to netns.GetFromName %s: %s", nodeiNetNs, err)
-	// }
-	// err = netns.Set(nodeiNetNs)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to netns.Set: %s", err)
-	// }
-	// veth, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName: %s: %s", veth, err)
-	// }
-	// err = netlink.LinkDel(veth)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete veth: %s", err)
-	// }
+	/* Switch to Node's NetNs and destroy veth */
+	nodeiNetNs, err = ntlm.getNsHandle("itl_test" + strconv.Itoa(nodeIdi))
+	if err != nil {
+		return err
+	}
+	err = netns.Set(nodeiNetNs)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
+	veth, err := netlink.LinkByName("eth" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName: %s: %s", veth, err)
+	}
+	err = netlink.LinkDel(veth)
+	if err != nil {
+		return fmt.Errorf("failed to delete veth: %s", err)
+	}
 
-	// /* Set NetNs Back */
-	// err = netns.Set(hostNetns)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to netns.Set: %s", err)
-	// }
+	/* Set NetNs Back */
+	err = netns.Set(hostNetns)
+	if err != nil {
+		return fmt.Errorf("failed to netns.Set: %s", err)
+	}
 	return err
 }
 
