@@ -158,10 +158,6 @@ func main() {
 		networkManager = &network.NetlinkPassthroughNetworkManager{}
 	case "ntlbr":
 		networkManager = &network.NetlinkBridgeNetworkManager{}
-	case "ntlptlu":
-		networkManager = &network.NetlinkPassthroughLookupNetworkManager{}
-	case "ntlbrlu":
-		networkManager = &network.NetlinkBridgeLookupNetworkManager{}
 	default:
 		fmt.Printf("Invalid network manager: %v.\n", args.NetworkManagerType)
 		return

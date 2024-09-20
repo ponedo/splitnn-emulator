@@ -6,31 +6,50 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"time"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
 type NetlinkBridgeNetworkManager struct {
-	name2handle map[string]netns.NsHandle
+	name2handle         map[string]netns.NsHandle
+	destroyInternalTime time.Duration
+	destroyExternalTime time.Duration
+	destroyBrTime       time.Duration
+	destroyVethTime     time.Duration
+	destroyVxlanTime    time.Duration
 }
 
-func (ntlm *NetlinkBridgeNetworkManager) Init() error {
+func (ntlm *NetlinkBridgeNetworkManager) SetupBackboneNetns() error {
 	SetupNodeCommand := exec.Command(
 		"ip", "netns", "add", "itl_test_bb")
 	// fmt.Printf("SetupNodeCommand: %v\n", SetupNodeCommand)
 	SetupNodeCommand.Stdout = os.Stdout
 	SetupNodeCommand.Run()
-	ntlm.name2handle = make(map[string]netns.NsHandle)
 	return nil
 }
 
-func (ntlm *NetlinkBridgeNetworkManager) Delete() error {
+func (ntlm *NetlinkBridgeNetworkManager) DestroyBackboneNetns() error {
 	SetupNodeCommand := exec.Command(
 		"ip", "netns", "del", "itl_test_bb")
 	// fmt.Printf("SetupNodeCommand: %v\n", SetupNodeCommand)
 	SetupNodeCommand.Stdout = os.Stdout
 	SetupNodeCommand.Run()
+	return nil
+}
+
+func (ntlm *NetlinkBridgeNetworkManager) Init() error {
+	ntlm.name2handle = make(map[string]netns.NsHandle)
+	return nil
+}
+
+func (ntlm *NetlinkBridgeNetworkManager) Delete() error {
+	fmt.Printf("Destroy Internal link time: %.2fs\n", ntlm.destroyInternalTime.Seconds())
+	fmt.Printf("Destroy External link time: %.2fs\n", ntlm.destroyExternalTime.Seconds())
+	fmt.Printf("Destroy Br time: %.2fs\n", ntlm.destroyBrTime.Seconds())
+	fmt.Printf("Destroy Veth time: %.2fs\n", ntlm.destroyVethTime.Seconds())
+	fmt.Printf("Destroy Vxlan time: %.2fs\n", ntlm.destroyVxlanTime.Seconds())
 	return nil
 }
 
@@ -62,10 +81,15 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupLink(nodeIdi int, nodeIdj int, ser
 
 func (ntlm *NetlinkBridgeNetworkManager) DestroyLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
+	startTime := time.Now()
 	if vxlanID == -1 {
 		err = ntlm.DestroyInternalLink(nodeIdi, nodeIdj, serverID, vxlanID)
+		destroyTime := time.Since(startTime)
+		ntlm.destroyInternalTime += destroyTime
 	} else {
 		err = ntlm.DestroyExternalLink(nodeIdi, nodeIdj, serverID, vxlanID)
+		destroyTime := time.Since(startTime)
+		ntlm.destroyExternalTime += destroyTime
 	}
 	return err
 }
@@ -185,6 +209,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 	var err error
 	var hostNetns, backboneNs netns.NsHandle
 	var brName string
+	var startTime time.Time
+	var destroyTime time.Duration
 
 	/* Prepare network namespace handles */
 	hostNetns, err = netns.Get()
@@ -202,25 +228,31 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
-	/* Remove two veth pairs and the bridge */
-	vethi, err := netlink.LinkByName(
-		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethi, err)
-	}
-	err = netlink.LinkDel(vethi)
-	if err != nil {
-		return fmt.Errorf("failed to delete vethi: %s", err)
-	}
-	vethj, err := netlink.LinkByName(
-		"eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi))
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethj, err)
-	}
-	err = netlink.LinkDel(vethj)
-	if err != nil {
-		return fmt.Errorf("failed to delete vethj: %s", err)
-	}
+	// /* Remove two veth pairs */
+	// startTime = time.Now()
+	// vethi, err := netlink.LinkByName(
+	// 	"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+	// }
+	// err = netlink.LinkDel(vethi)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to delete vethi: %s", err)
+	// }
+	// vethj, err := netlink.LinkByName(
+	// 	"eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to LinkByName vethj: %s: %s", vethj, err)
+	// }
+	// err = netlink.LinkDel(vethj)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to delete vethj: %s", err)
+	// }
+	// destroyTime = time.Since(startTime)
+	// ntlm.destroyVethTime += destroyTime
+
+	/* Remove the bridge */
+	startTime = time.Now()
 	if nodeIdi < nodeIdj {
 		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	} else {
@@ -228,12 +260,14 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 	}
 	br, err := netlink.LinkByName(brName)
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", br, err)
+		return fmt.Errorf("failed to LinkByName br: %s: %s", br, err)
 	}
 	err = netlink.LinkDel(br)
 	if err != nil {
 		return fmt.Errorf("failed to delete br: %s", err)
 	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyBrTime += destroyTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
@@ -318,6 +352,16 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 		return fmt.Errorf("failed to create VethPeer in nodeiNetNs: %s", err)
 	}
 
+	/* Set Vxlan master and set Vxlan up */
+	err = netlink.LinkSetMaster(vxlan, br)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetMaster: %s", err)
+	}
+	err = netlink.LinkSetUp(vxlan)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetUp: %s", err)
+	}
+
 	/* Set the other side of veth up */
 	var vethIni netlink.Link
 	err = netns.Set(nodeiNetNs)
@@ -334,16 +378,6 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
 
-	/* Set Vxlan master and set Vxlan up */
-	err = netlink.LinkSetMaster(vxlan, br)
-	if err != nil {
-		return fmt.Errorf("failed to LinkSetMaster: %s", err)
-	}
-	err = netlink.LinkSetUp(vxlan)
-	if err != nil {
-		return fmt.Errorf("failed to LinkSetUp: %s", err)
-	}
-
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
 	if err != nil {
@@ -356,6 +390,8 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	var err error
 	var hostNetns, backboneNs netns.NsHandle
 	var brName string
+	var startTime time.Time
+	var destroyTime time.Duration
 
 	/* Prepare network namespace handles */
 	hostNetns, err = netns.Get()
@@ -373,25 +409,36 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
-	/* Remove the veth pair, the vxlan and the bridge */
-	vethi, err := netlink.LinkByName(
-		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vethi, err)
-	}
-	err = netlink.LinkDel(vethi)
-	if err != nil {
-		return fmt.Errorf("failed to delete vethi: %s", err)
-	}
-	vxlan, err := netlink.LinkByName(
-		"vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", vxlan, err)
-	}
-	err = netlink.LinkDel(vxlan)
-	if err != nil {
-		return fmt.Errorf("failed to delete vethj: %s", err)
-	}
+	// /* Remove the veth pair */
+	// startTime = time.Now()
+	// vethi, err := netlink.LinkByName(
+	// 	"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+	// }
+	// err = netlink.LinkDel(vethi)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to delete vethi: %s", err)
+	// }
+	// destroyTime = time.Since(startTime)
+	// ntlm.destroyVethTime += destroyTime
+
+	// /* Remove the vxlan */
+	// startTime = time.Now()
+	// vxlan, err := netlink.LinkByName(
+	// 	"vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	// if err != nil {
+	// 	return fmt.Errorf("failed to LinkByName vxlan: %s: %s", vxlan, err)
+	// }
+	// err = netlink.LinkDel(vxlan)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to delete vxlan: %s", err)
+	// }
+	// destroyTime = time.Since(startTime)
+	// ntlm.destroyVxlanTime += destroyTime
+
+	/* Remove the bridge */
+	startTime = time.Now()
 	if nodeIdi < nodeIdj {
 		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	} else {
@@ -399,12 +446,14 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	}
 	br, err := netlink.LinkByName(brName)
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName: %s: %s", br, err)
+		return fmt.Errorf("failed to LinkByName br: %s: %s", br, err)
 	}
 	err = netlink.LinkDel(br)
 	if err != nil {
 		return fmt.Errorf("failed to delete br: %s", err)
 	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyBrTime += destroyTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
@@ -414,15 +463,25 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	return err
 }
 
+// func (ntlm *NetlinkBridgeNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
+// 	var err error
+// 	nsHandle, ok := ntlm.name2handle[nsName]
+// 	if !ok {
+// 		nsHandle, err = netns.GetFromName(nsName)
+// 		if err != nil {
+// 			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
+// 		}
+// 		ntlm.name2handle[nsName] = nsHandle
+// 	}
+// 	return nsHandle, nil
+// }
+
 func (ntlm *NetlinkBridgeNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
 	var err error
-	nsHandle, ok := ntlm.name2handle[nsName]
-	if !ok {
-		nsHandle, err = netns.GetFromName(nsName)
-		if err != nil {
-			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
-		}
-		ntlm.name2handle[nsName] = nsHandle
+	var nsHandle netns.NsHandle
+	nsHandle, err = netns.GetFromName(nsName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
 	}
 	return nsHandle, nil
 }

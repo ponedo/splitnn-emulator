@@ -54,6 +54,8 @@ type NetworkManager interface {
 	DestroyNode(int) error
 	SetupLink(int, int, int, int) error
 	DestroyLink(int, int, int, int) error
+	SetupBackboneNetns() error
+	DestroyBackboneNetns() error
 	Init() error
 	Delete() error
 }
@@ -62,6 +64,10 @@ func NetworkSetup(nm NetworkManager, g *algo.Graph, nodeOrder []int, edgeOrder [
 	var err error
 	var nodeTotalTime, linkTotalTime time.Duration
 	err = nm.Init()
+	if err != nil {
+		return err
+	}
+	err = nm.SetupBackboneNetns()
 	if err != nil {
 		return err
 	}
@@ -112,6 +118,10 @@ func NetworkDestroy(nm NetworkManager, g *algo.Graph, nodeOrder []int, edgeOrder
 			return err
 		}
 		nodeTotalTime += time.Since(startNodeTime)
+	}
+	err = nm.DestroyBackboneNetns()
+	if err != nil {
+		return err
 	}
 	err = nm.Delete()
 	if err != nil {

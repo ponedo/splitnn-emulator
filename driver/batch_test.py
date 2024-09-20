@@ -7,6 +7,8 @@ from scripts.partition_topo import partition_graph
 from util.remote import RemoteMachine, \
     execute_command_on_multiple_machines, send_file_to_multiple_machines
 
+RUNTIME=5
+
 topos = [
     ["grid", "10", "10"],
     ["grid", "20", "20"],
@@ -32,11 +34,9 @@ topos = [
 
 nms = [
     "iprpt",
-    "iprbr",
     "ntlpt",
+    "iprbr",
     "ntlbr",
-    "ntlptlu",
-    "ntlbrlu",
 ]
 
 algos = [
@@ -134,38 +134,35 @@ if __name__ == "__main__":
         # Run experiments for different network managers and algorithms
         for nm in nms:
             for algo in algos:
-                # Prepare setup and destroy commands
-                setup_commands, destroy_commands = {}, {}
-                for i, server in enumerate(servers):
-                    exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
-                    subtopo_dst_filename = subtopo_src_dst_filepaths[server["ipAddr"]][1]
-                    server_config_dst_filepath = server_config_src_dst_paths[server["ipAddr"]][1]
-                    subtopo_filename = os.path.basename(subtopo_dst_filename)
-                    setup_command = get_vn_manage_cmd(
-                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-                        "setup", subtopo_dst_filename, nm, algo,
-                        server["phyIntf"], server_config_dst_filepath
-                    )
-                    destroy_command = get_vn_manage_cmd(
-                        os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-                        "destroy", subtopo_dst_filename, nm, algo,
-                        server["phyIntf"], server_config_dst_filepath
-                    )
-                    setup_log_path = os.path.join(
-                        server["infraWorkDir"], "log", f"{nm}.{algo}.setup.{subtopo_filename}")
-                    destroy_log_path = os.path.join(
-                        server["infraWorkDir"], "log", f"{nm}.{algo}.destroy.{subtopo_filename}")
-                    setup_commands[server["ipAddr"]] = (setup_command, server["infraWorkDir"], setup_log_path, True)
-                    destroy_commands[server["ipAddr"]] = (destroy_command, server["infraWorkDir"], destroy_log_path, True)
+                for run_i in range(RUNTIME):
+                    # Prepare setup and destroy commands
+                    setup_commands, destroy_commands = {}, {}
+                    for i, server in enumerate(servers):
+                        exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
+                        subtopo_dst_filename = subtopo_src_dst_filepaths[server["ipAddr"]][1]
+                        server_config_dst_filepath = server_config_src_dst_paths[server["ipAddr"]][1]
+                        subtopo_filename = os.path.basename(subtopo_dst_filename)
+                        setup_command = get_vn_manage_cmd(
+                            os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                            "setup", subtopo_dst_filename, nm, algo,
+                            server["phyIntf"], server_config_dst_filepath
+                        )
+                        destroy_command = get_vn_manage_cmd(
+                            os.path.join(server["infraWorkDir"], "bin", "itl_test"),
+                            "destroy", subtopo_dst_filename, nm, algo,
+                            server["phyIntf"], server_config_dst_filepath
+                        )
+                        setup_log_path = os.path.join(
+                            server["infraWorkDir"], "log", f"{nm}.{algo}.setup.run_{run_i}.{subtopo_filename}")
+                        destroy_log_path = os.path.join(
+                            server["infraWorkDir"], "log", f"{nm}.{algo}.destroy.run_{run_i}.{subtopo_filename}")
+                        setup_commands[server["ipAddr"]] = (setup_command, server["infraWorkDir"], setup_log_path, True)
+                        destroy_commands[server["ipAddr"]] = (destroy_command, server["infraWorkDir"], destroy_log_path, True)
 
-                # Setup virtual network
-                execute_command_on_multiple_machines(remote_machines, setup_commands)
-
-                # Wait for a while
-                time.sleep(30)
-
-                # Destroy virtual network
-                execute_command_on_multiple_machines(remote_machines, destroy_commands)
+                    # Run virtual networks
+                    execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+                    time.sleep(25) # Wait for a while
+                    execute_command_on_multiple_machines(remote_machines, destroy_commands) # Destroy virtual network
 
     # Close connection
     for remote_machine in remote_machines:

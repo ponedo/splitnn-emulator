@@ -15,6 +15,14 @@ type NetlinkPassthroughNetworkManager struct {
 	name2handle map[string]netns.NsHandle
 }
 
+func (ntlm *NetlinkPassthroughNetworkManager) SetupBackboneNetns() error {
+	return nil
+}
+
+func (ntlm *NetlinkPassthroughNetworkManager) DestroyBackboneNetns() error {
+	return nil
+}
+
 func (ntlm *NetlinkPassthroughNetworkManager) Init() error {
 	ntlm.name2handle = make(map[string]netns.NsHandle)
 	return nil
@@ -247,15 +255,25 @@ func (ntlm *NetlinkPassthroughNetworkManager) DestroyExternalLink(nodeIdi int, n
 	return err
 }
 
+// func (ntlm *NetlinkPassthroughNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
+// 	var err error
+// 	nsHandle, ok := ntlm.name2handle[nsName]
+// 	if !ok {
+// 		nsHandle, err = netns.GetFromName(nsName)
+// 		if err != nil {
+// 			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
+// 		}
+// 		ntlm.name2handle[nsName] = nsHandle
+// 	}
+// 	return nsHandle, nil
+// }
+
 func (ntlm *NetlinkPassthroughNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
 	var err error
-	nsHandle, ok := ntlm.name2handle[nsName]
-	if !ok {
-		nsHandle, err = netns.GetFromName(nsName)
-		if err != nil {
-			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
-		}
-		ntlm.name2handle[nsName] = nsHandle
+	var nsHandle netns.NsHandle
+	nsHandle, err = netns.GetFromName(nsName)
+	if err != nil {
+		return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
 	}
 	return nsHandle, nil
 }

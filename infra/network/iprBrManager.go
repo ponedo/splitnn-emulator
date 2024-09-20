@@ -9,6 +9,14 @@ import (
 type IprouteBridgeNetworkManager struct {
 }
 
+func (iprm *IprouteBridgeNetworkManager) SetupBackboneNetns() error {
+	return nil
+}
+
+func (iprm *IprouteBridgeNetworkManager) DestroyBackboneNetns() error {
+	return nil
+}
+
 func (iprm *IprouteBridgeNetworkManager) Init() error {
 	SetupNodeCommand := exec.Command(
 		"ip", "netns", "add", "itl_test_bb")

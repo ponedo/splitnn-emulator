@@ -8,6 +8,14 @@ import (
 
 type IproutePassthroughNetworkManager struct{}
 
+func (iprm *IproutePassthroughNetworkManager) SetupBackboneNetns() error {
+	return nil
+}
+
+func (iprm *IproutePassthroughNetworkManager) DestroyBackboneNetns() error {
+	return nil
+}
+
 func (iprm *IproutePassthroughNetworkManager) Init() error {
 	return nil
 }
