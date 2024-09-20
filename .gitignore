@@ -1,4 +1,5 @@
 driver/topo/*.*
+driver/results/
 infra/tmp/*.*
 infra/log/*.*
 __pycache__/

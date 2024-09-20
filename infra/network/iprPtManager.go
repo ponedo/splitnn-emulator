@@ -132,12 +132,12 @@ func (iprm *IproutePassthroughNetworkManager) SetupExternalLink(nodeIdi int, nod
 }
 
 func (iprm *IproutePassthroughNetworkManager) DestroyExternalLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
-	// DestroyLinkCommand := exec.Command(
-	// 	"ip", "netns", "exec", "itl_test"+strconv.Itoa(nodeIdi),
-	// 	"ip", "link", "del", "eth"+strconv.Itoa(nodeIdj),
-	// )
-	// // fmt.Printf("DestroyLinkCommand: %v\n", DestroyLinkCommand)
-	// DestroyLinkCommand.Stdout = os.Stdout
-	// DestroyLinkCommand.Run()
+	DestroyLinkCommand := exec.Command(
+		"ip", "netns", "exec", "itl_test"+strconv.Itoa(nodeIdi),
+		"ip", "link", "del", "eth"+strconv.Itoa(nodeIdj),
+	)
+	// fmt.Printf("DestroyLinkCommand: %v\n", DestroyLinkCommand)
+	DestroyLinkCommand.Stdout = os.Stdout
+	DestroyLinkCommand.Run()
 	return nil
 }

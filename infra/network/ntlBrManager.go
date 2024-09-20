@@ -423,19 +423,19 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 	// destroyTime = time.Since(startTime)
 	// ntlm.destroyVethTime += destroyTime
 
-	// /* Remove the vxlan */
-	// startTime = time.Now()
-	// vxlan, err := netlink.LinkByName(
-	// 	"vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName vxlan: %s: %s", vxlan, err)
-	// }
-	// err = netlink.LinkDel(vxlan)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete vxlan: %s", err)
-	// }
-	// destroyTime = time.Since(startTime)
-	// ntlm.destroyVxlanTime += destroyTime
+	/* Remove the vxlan */
+	startTime = time.Now()
+	vxlan, err := netlink.LinkByName(
+		"vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName vxlan: %s: %s", vxlan, err)
+	}
+	err = netlink.LinkDel(vxlan)
+	if err != nil {
+		return fmt.Errorf("failed to delete vxlan: %s", err)
+	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyVxlanTime += destroyTime
 
 	/* Remove the bridge */
 	startTime = time.Now()

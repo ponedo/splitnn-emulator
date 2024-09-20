@@ -12,31 +12,31 @@ RUNTIME=5
 topos = [
     ["grid", "10", "10"],
     ["grid", "20", "20"],
-    ["grid", "30", "30"],
-    ["grid", "40", "40"],
-    ["grid", "50", "50"],
-    ["grid", "60", "60"],
-    ["grid", "70", "70"],
-    ["grid", "75", "75"],
-    ["grid", "80", "80"],
-    ["grid", "85", "85"],
-    ["grid", "90", "90"],
-    ["grid", "95", "95"],
-    ["grid", "100", "100"],
-    ["clos", "8"],
-    ["clos", "12"],
-    ["clos", "16"],
-    ["clos", "20"],
-    ["clos", "24"],
-    ["clos", "28"],
-    ["clos", "32"],
+    # ["grid", "30", "30"],
+    # ["grid", "40", "40"],
+    # ["grid", "50", "50"],
+    # ["grid", "60", "60"],
+    # ["grid", "70", "70"],
+    # ["grid", "75", "75"],
+    # ["grid", "80", "80"],
+    # ["grid", "85", "85"],
+    # ["grid", "90", "90"],
+    # ["grid", "95", "95"],
+    # ["grid", "100", "100"],
+    # ["clos", "8"],
+    # ["clos", "12"],
+    # ["clos", "16"],
+    # ["clos", "20"],
+    # ["clos", "24"],
+    # ["clos", "28"],
+    # ["clos", "32"],
 ]
 
 nms = [
-    "iprpt",
-    "ntlpt",
-    "iprbr",
     "ntlbr",
+    # "iprbr",
+    "ntlpt",
+    # "iprpt",
 ]
 
 algos = [
@@ -161,7 +161,7 @@ if __name__ == "__main__":
 
                     # Run virtual networks
                     execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-                    time.sleep(25) # Wait for a while
+                    time.sleep(5) # Wait for a while
                     execute_command_on_multiple_machines(remote_machines, destroy_commands) # Destroy virtual network
 
     # Close connection
