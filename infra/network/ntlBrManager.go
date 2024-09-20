@@ -228,28 +228,28 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyInternalLink(nodeIdi int, nodeId
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
-	// /* Remove two veth pairs */
-	// startTime = time.Now()
-	// vethi, err := netlink.LinkByName(
-	// 	"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
-	// }
-	// err = netlink.LinkDel(vethi)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete vethi: %s", err)
-	// }
-	// vethj, err := netlink.LinkByName(
-	// 	"eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName vethj: %s: %s", vethj, err)
-	// }
-	// err = netlink.LinkDel(vethj)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete vethj: %s", err)
-	// }
-	// destroyTime = time.Since(startTime)
-	// ntlm.destroyVethTime += destroyTime
+	/* Remove two veth pairs */
+	startTime = time.Now()
+	vethi, err := netlink.LinkByName(
+		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+	}
+	err = netlink.LinkDel(vethi)
+	if err != nil {
+		return fmt.Errorf("failed to delete vethi: %s", err)
+	}
+	vethj, err := netlink.LinkByName(
+		"eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName vethj: %s: %s", vethj, err)
+	}
+	err = netlink.LinkDel(vethj)
+	if err != nil {
+		return fmt.Errorf("failed to delete vethj: %s", err)
+	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyVethTime += destroyTime
 
 	/* Remove the bridge */
 	startTime = time.Now()
@@ -409,19 +409,19 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyExternalLink(nodeIdi int, nodeId
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
-	// /* Remove the veth pair */
-	// startTime = time.Now()
-	// vethi, err := netlink.LinkByName(
-	// 	"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
-	// }
-	// err = netlink.LinkDel(vethi)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to delete vethi: %s", err)
-	// }
-	// destroyTime = time.Since(startTime)
-	// ntlm.destroyVethTime += destroyTime
+	/* Remove the veth pair */
+	startTime = time.Now()
+	vethi, err := netlink.LinkByName(
+		"eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName vethi: %s: %s", vethi, err)
+	}
+	err = netlink.LinkDel(vethi)
+	if err != nil {
+		return fmt.Errorf("failed to delete vethi: %s", err)
+	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyVethTime += destroyTime
 
 	/* Remove the vxlan */
 	startTime = time.Now()
