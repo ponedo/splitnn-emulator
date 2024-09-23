@@ -50,6 +50,11 @@ func (ntlm *NetlinkBridgeNetworkManager) Init() error {
 }
 
 func (ntlm *NetlinkBridgeNetworkManager) Delete() error {
+	fmt.Printf("Setup Internal link time: %.2fs\n", ntlm.setupInternalTime.Seconds())
+	fmt.Printf("Setup External link time: %.2fs\n", ntlm.setupExternalTime.Seconds())
+	fmt.Printf("Setup Br time: %.2fs\n", ntlm.setupBrTime.Seconds())
+	fmt.Printf("Setup Veth time: %.2fs\n", ntlm.setupVethTime.Seconds())
+	fmt.Printf("Setup Vxlan time: %.2fs\n", ntlm.setupVxlanTime.Seconds())
 	fmt.Printf("Destroy Internal link time: %.2fs\n", ntlm.destroyInternalTime.Seconds())
 	fmt.Printf("Destroy External link time: %.2fs\n", ntlm.destroyExternalTime.Seconds())
 	fmt.Printf("Destroy Br time: %.2fs\n", ntlm.destroyBrTime.Seconds())
