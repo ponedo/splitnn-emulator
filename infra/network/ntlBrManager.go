@@ -14,6 +14,11 @@ import (
 
 type NetlinkBridgeNetworkManager struct {
 	name2handle         map[string]netns.NsHandle
+	setupInternalTime   time.Duration
+	setupExternalTime   time.Duration
+	setupBrTime         time.Duration
+	setupVethTime       time.Duration
+	setupVxlanTime      time.Duration
 	destroyInternalTime time.Duration
 	destroyExternalTime time.Duration
 	destroyBrTime       time.Duration
@@ -71,10 +76,15 @@ func (ntlm *NetlinkBridgeNetworkManager) DestroyNode(nodeId int) error {
 
 func (ntlm *NetlinkBridgeNetworkManager) SetupLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
+	startTime := time.Now()
 	if vxlanID == -1 {
 		err = ntlm.SetupInternalLink(nodeIdi, nodeIdj, serverID, vxlanID)
+		setupTime := time.Since(startTime)
+		ntlm.setupInternalTime += setupTime
 	} else {
 		err = ntlm.SetupExternalLink(nodeIdi, nodeIdj, serverID, vxlanID)
+		setupTime := time.Since(startTime)
+		ntlm.setupExternalTime += setupTime
 	}
 	return err
 }
@@ -98,6 +108,8 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	var err error
 	var hostNetns, backboneNs, nodeiNetNs, nodejNetNs netns.NsHandle
 	var brName string
+	var startTime time.Time
+	var setupTime time.Duration
 
 	/* Prepare network namespace handles */
 	hostNetns, err = netns.Get()
@@ -124,6 +136,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	}
 
 	/* Create a bridge and two veth pairs */
+	startTime = time.Now()
 	if nodeIdi < nodeIdj {
 		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	} else {
@@ -139,6 +152,9 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	if err := netlink.LinkAdd(br); err != nil {
 		return fmt.Errorf("failed to create bridge: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupBrTime += setupTime
+	startTime = time.Now()
 	vethi := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
@@ -167,8 +183,11 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to create VethPeer in nodejNetNs: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVethTime += setupTime
 
 	/* Set the other sides of veths up */
+	startTime = time.Now()
 	var vethIni, vethInj netlink.Link
 	err = netns.Set(nodeiNetNs)
 	if err != nil {
@@ -196,6 +215,8 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupInternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVethTime += setupTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
@@ -283,6 +304,8 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	var err error
 	var hostNetns, backboneNs, nodeiNetNs netns.NsHandle
 	var brName string
+	var startTime time.Time
+	var setupTime time.Duration
 
 	/* Prepare network namespace handles */
 	hostNetns, err = netns.Get()
@@ -299,6 +322,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	}
 
 	/* Create Vxlan */
+	startTime = time.Now()
 	vxlan := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
@@ -316,6 +340,8 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to link set nsfd: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVxlanTime += setupTime
 
 	/* Switch to backbone's NetNs */
 	err = netns.Set(backboneNs)
@@ -324,6 +350,7 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	}
 
 	/* Create bridge and a veth pair */
+	startTime = time.Now()
 	if nodeIdi < nodeIdj {
 		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	} else {
@@ -339,6 +366,9 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	if err := netlink.LinkAdd(br); err != nil {
 		return fmt.Errorf("failed to create bridge: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupBrTime += setupTime
+	startTime = time.Now()
 	vethi := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj),
@@ -353,8 +383,11 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to create VethPeer in nodeiNetNs: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVethTime += setupTime
 
 	/* Set Vxlan master and set Vxlan up */
+	startTime = time.Now()
 	err = netlink.LinkSetMaster(vxlan, br)
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetMaster: %s", err)
@@ -363,8 +396,11 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVxlanTime += setupTime
 
 	/* Set the other side of veth up */
+	startTime = time.Now()
 	var vethIni netlink.Link
 	err = netns.Set(nodeiNetNs)
 	if err != nil {
@@ -379,6 +415,8 @@ func (ntlm *NetlinkBridgeNetworkManager) SetupExternalLink(nodeIdi int, nodeIdj 
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
+	setupTime = time.Since(startTime)
+	ntlm.setupVethTime += setupTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)

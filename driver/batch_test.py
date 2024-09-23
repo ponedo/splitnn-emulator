@@ -7,11 +7,11 @@ from scripts.partition_topo import partition_graph
 from util.remote import RemoteMachine, \
     execute_command_on_multiple_machines, send_file_to_multiple_machines
 
-RUNTIME=5
+RUNTIME=1
 
 topos = [
-    ["grid", "10", "10"],
-    ["grid", "20", "20"],
+    # ["grid", "10", "10"],
+    # ["grid", "20", "20"],
     # ["grid", "30", "30"],
     # ["grid", "40", "40"],
     # ["grid", "50", "50"],
@@ -21,22 +21,22 @@ topos = [
     # ["grid", "80", "80"],
     # ["grid", "85", "85"],
     # ["grid", "90", "90"],
-    # ["grid", "95", "95"],
-    # ["grid", "100", "100"],
-    # ["clos", "8"],
-    # ["clos", "12"],
-    # ["clos", "16"],
-    # ["clos", "20"],
-    # ["clos", "24"],
-    # ["clos", "28"],
-    # ["clos", "32"],
+    ["clos", "8"],
+    ["clos", "12"],
+    ["clos", "16"],
+    ["clos", "20"],
+    ["clos", "24"],
+    ["clos", "28"],
+    ["grid", "95", "95"],
+    ["clos", "32"],
+    ["grid", "100", "100"],
 ]
 
 nms = [
     "ntlbr",
-    # "iprbr",
+    "iprbr",
     "ntlpt",
-    # "iprpt",
+    "iprpt",
 ]
 
 algos = [
