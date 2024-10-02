@@ -10,10 +10,10 @@ from util.remote import RemoteMachine, \
 RUNTIME=1
 
 topos = [
-    # ["grid", "10", "10"],
+    ["grid", "10", "10"],
     # ["grid", "20", "20"],
     # ["grid", "30", "30"],
-    ["grid", "40", "40"],
+    # ["grid", "40", "40"],
     # ["grid", "50", "50"],
     # ["grid", "60", "60"],
     # ["grid", "70", "70"],
@@ -33,10 +33,12 @@ topos = [
 ]
 
 nms = [
-    "ntlbr",
+    # "ntlbr",
     # "iprbr",
     # "ntlpt",
     # "iprpt",
+    # "ntlptnc",
+    "ntlbrnc",
 ]
 
 algos = [

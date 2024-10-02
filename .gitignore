@@ -7,4 +7,5 @@ infra/cilium*/
 infra/tmp/*.*
 infra/log/*.*
 infra/strace/
+infra/demo*
 __pycache__/

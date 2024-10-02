@@ -254,6 +254,24 @@ func (ntlm *NetlinkBridgeNsCacheNetworkManager) DestroyInternalLink(nodeIdi int,
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
+	/* Remove the bridge */
+	startTime = time.Now()
+	if nodeIdi < nodeIdj {
+		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	} else {
+		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+	}
+	br, err := netlink.LinkByName(brName)
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
+	}
+	err = netlink.LinkDel(br)
+	if err != nil {
+		return fmt.Errorf("failed to delete br: %s", err)
+	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyBrTime += destroyTime
+
 	/* Remove two veth pairs */
 	startTime = time.Now()
 	vethi, err := netlink.LinkByName(
@@ -278,24 +296,6 @@ func (ntlm *NetlinkBridgeNsCacheNetworkManager) DestroyInternalLink(nodeIdi int,
 	}
 	destroyTime = time.Since(startTime)
 	ntlm.destroyVethTime += destroyTime
-
-	/* Remove the bridge */
-	startTime = time.Now()
-	if nodeIdi < nodeIdj {
-		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
-	} else {
-		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
-	}
-	br, err := netlink.LinkByName(brName)
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
-	}
-	err = netlink.LinkDel(br)
-	if err != nil {
-		return fmt.Errorf("failed to delete br: %s", err)
-	}
-	destroyTime = time.Since(startTime)
-	ntlm.destroyBrTime += destroyTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
@@ -393,11 +393,16 @@ func (ntlm *NetlinkBridgeNsCacheNetworkManager) SetupExternalLink(nodeIdi int, n
 
 	/* Set Vxlan master and set Vxlan up */
 	startTime = time.Now()
-	err = netlink.LinkSetMaster(vxlan, br)
+	var newVxlan netlink.Link
+	newVxlan, err = netlink.LinkByName("vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj))
 	if err != nil {
-		return fmt.Errorf("failed to LinkSetMaster: %s", err)
+		return fmt.Errorf("failed to LinkByName newVxlan: %s", err)
 	}
-	err = netlink.LinkSetUp(vxlan)
+	err = netlink.LinkSetMaster(newVxlan, br)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetMaster (%d, %d, %d, %s, %v): %s", nodeIdi, nodeIdj, vxlanID, brName, br, err)
+	}
+	err = netlink.LinkSetUp(newVxlan)
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetUp: %s", err)
 	}
@@ -454,6 +459,24 @@ func (ntlm *NetlinkBridgeNsCacheNetworkManager) DestroyExternalLink(nodeIdi int,
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 
+	/* Remove the bridge */
+	startTime = time.Now()
+	if nodeIdi < nodeIdj {
+		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	} else {
+		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+	}
+	br, err := netlink.LinkByName(brName)
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
+	}
+	err = netlink.LinkDel(br)
+	if err != nil {
+		return fmt.Errorf("failed to delete br: %s", err)
+	}
+	destroyTime = time.Since(startTime)
+	ntlm.destroyBrTime += destroyTime
+
 	/* Remove the veth pair */
 	startTime = time.Now()
 	vethi, err := netlink.LinkByName(
@@ -483,24 +506,6 @@ func (ntlm *NetlinkBridgeNsCacheNetworkManager) DestroyExternalLink(nodeIdi int,
 	}
 	destroyTime = time.Since(startTime)
 	ntlm.destroyVxlanTime += destroyTime
-
-	/* Remove the bridge */
-	startTime = time.Now()
-	if nodeIdi < nodeIdj {
-		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
-	} else {
-		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
-	}
-	br, err := netlink.LinkByName(brName)
-	if err != nil {
-		return fmt.Errorf("failed to LinkByName br: %s: %s", brName, err)
-	}
-	err = netlink.LinkDel(br)
-	if err != nil {
-		return fmt.Errorf("failed to delete br: %s", err)
-	}
-	destroyTime = time.Since(startTime)
-	ntlm.destroyBrTime += destroyTime
 
 	/* Set NetNs Back */
 	err = netns.Set(hostNetns)
