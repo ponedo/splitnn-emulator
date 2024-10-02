@@ -252,25 +252,25 @@ func (ntlm *NetlinkPassthroughNsCacheNetworkManager) DestroyExternalLink(nodeIdi
 	return err
 }
 
-// func (ntlm *NetlinkPassthroughNsCacheNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
-// 	var err error
-// 	nsHandle, ok := ntlm.name2handle[nsName]
-// 	if !ok {
-// 		nsHandle, err = netns.GetFromName(nsName)
-// 		if err != nil {
-// 			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
-// 		}
-// 		ntlm.name2handle[nsName] = nsHandle
-// 	}
-// 	return nsHandle, nil
-// }
-
 func (ntlm *NetlinkPassthroughNsCacheNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
 	var err error
-	var nsHandle netns.NsHandle
-	nsHandle, err = netns.GetFromName(nsName)
-	if err != nil {
-		return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
+	nsHandle, ok := ntlm.name2handle[nsName]
+	if !ok {
+		nsHandle, err = netns.GetFromName(nsName)
+		if err != nil {
+			return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
+		}
+		ntlm.name2handle[nsName] = nsHandle
 	}
 	return nsHandle, nil
 }
+
+// func (ntlm *NetlinkPassthroughNsCacheNetworkManager) getNsHandle(nsName string) (netns.NsHandle, error) {
+// 	var err error
+// 	var nsHandle netns.NsHandle
+// 	nsHandle, err = netns.GetFromName(nsName)
+// 	if err != nil {
+// 		return 0, fmt.Errorf("failed to netns.GetFromName %s: %s", nsHandle, err)
+// 	}
+// 	return nsHandle, nil
+// }
