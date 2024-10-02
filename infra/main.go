@@ -40,10 +40,10 @@ func parseArgs() {
 		"Name of topology file")
 	flag.StringVar(
 		&args.NetworkManagerType, "manager", "",
-		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr]")
+		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr|ntlptnc|ntlbrnc]")
 	flag.StringVar(
 		&args.NetworkManagerType, "m", "",
-		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr]")
+		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr|ntlptnc|ntlbrnc]")
 	flag.StringVar(
 		&args.LocalPhyIntf, "phyintf", "",
 		"Name of physical interface")
@@ -158,6 +158,10 @@ func main() {
 		networkManager = &network.NetlinkPassthroughNetworkManager{}
 	case "ntlbr":
 		networkManager = &network.NetlinkBridgeNetworkManager{}
+	case "ntlptnc":
+		networkManager = &network.NetlinkPassthroughNsCacheNetworkManager{}
+	case "ntlbrnc":
+		networkManager = &network.NetlinkBridgeNsCacheNetworkManager{}
 	default:
 		fmt.Printf("Invalid network manager: %v.\n", args.NetworkManagerType)
 		return

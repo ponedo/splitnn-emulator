@@ -1,5 +1,10 @@
 driver/topo/*.*
 driver/results/
+driver/METIS/
+driver/GKlib/
+infra/cilium*
+infra/cilium*/
 infra/tmp/*.*
 infra/log/*.*
+infra/strace/
 __pycache__/
