@@ -2,8 +2,10 @@ package network
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 
@@ -73,9 +75,20 @@ func SetDisableIpv6(disableIpv6 int) {
 	DisableIpv6 = disableIpv6
 }
 
+func PrepareRootfs(dockerImageName string) {
+	prepareScriptPath := path.Join(WorkDir, "scripts", "prepare_rootfs.sh")
+	fmt.Printf("dockerImageName: %s\n", dockerImageName)
+	prepareCommand := exec.Command(
+		prepareScriptPath, dockerImageName)
+	prepareCommand.Stdout = os.Stdout
+	prepareCommand.Stderr = os.Stderr
+	prepareCommand.Run()
+}
+
 func ConfigEnvs(serverID int, disableIpv6 int) {
 	server := ServerList[serverID]
 	SetLocalPhyIntf(server.PhyIntf)
 	SetEnvPaths(server.WorkDir, server.DockerImageName)
 	SetDisableIpv6(disableIpv6)
+	PrepareRootfs(server.DockerImageName)
 }
