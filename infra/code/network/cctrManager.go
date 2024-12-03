@@ -92,9 +92,6 @@ func (nm *CctrNodeManager) CleanNode(nodeId int) error {
 
 	// Create the kill log file
 	killLogFilePath := path.Join(baseDir, "kill.log")
-
-	fmt.Printf("killLogFilePath: %s\n", killLogFilePath)
-
 	killLogFile, err := os.Create(killLogFilePath)
 	if err != nil {
 		fmt.Printf("Error creating file: %s\n", err)

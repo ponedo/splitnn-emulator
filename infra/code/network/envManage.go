@@ -70,7 +70,7 @@ func SetEnvPaths(workDir string, dockerImageName string) {
 }
 
 func SetDisableIpv6(disableIpv6 int) {
-	DisableIpv6 = 1
+	DisableIpv6 = disableIpv6
 }
 
 func ConfigEnvs(serverID int, disableIpv6 int) {

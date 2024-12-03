@@ -62,6 +62,7 @@ func NetworkSetup(
 			if err != nil {
 				return err
 			}
+			curLinkNum += 1
 		}
 		linkTotalTime += time.Since(startLinkTime)
 	}

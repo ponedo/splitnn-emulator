@@ -1,6 +1,8 @@
 package algo
 
-import "container/heap"
+import (
+	"container/heap"
+)
 
 // Node represents a node in the graph
 type Node struct {
@@ -51,8 +53,6 @@ func (pq *PriorityQueue) Update(node *Node, newContribution int) {
 type Graph struct {
 	AdjacencyList    map[int][]int
 	DanglingEdgeList map[int][][3]int // externalNodeID, serverID, vxlanID
-	NodeNum          int
-	EdgeNum          int
 }
 
 // NewGraph initializes a new graph
@@ -63,17 +63,17 @@ func NewGraph() *Graph {
 	}
 }
 
-// AddEdge adds an edge to the graph
-func (g *Graph) AddEdge(u, v int) {
-	g.AdjacencyList[u] = append(g.AdjacencyList[u], v)
-	g.AdjacencyList[v] = append(g.AdjacencyList[v], u)
-	g.EdgeNum += 1
-}
-
-func (g *Graph) GetNodeNum() int {
-	return len(g.AdjacencyList)
-}
+// // AddEdge adds an edge to the graph
+// func (g *Graph) AddEdge(u, v int) {
+// 	g.AdjacencyList[u] = append(g.AdjacencyList[u], v)
+// 	g.AdjacencyList[v] = append(g.AdjacencyList[v], u)
+// }
 
 func (g *Graph) GetEdgeNum() int {
-	return g.EdgeNum
+	edgeNum := 0
+	for _, adjList := range g.AdjacencyList {
+		edgeNum += len(adjList)
+	}
+	edgeNum /= 2
+	return edgeNum
 }

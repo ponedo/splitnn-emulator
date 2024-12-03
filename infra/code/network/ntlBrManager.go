@@ -37,7 +37,7 @@ func (lm *NtlBrLinkManager) Delete() error {
 }
 
 func (lm *NtlBrLinkManager) SetupAndEnterBbNs() error {
-	bbnsName := "itl_test_bb" + strconv.Itoa(lm.curBackBoneNum)
+	bbnsName := "bbns" + strconv.Itoa(lm.curBackBoneNum)
 	backboneNsHandle, err := netns.NewNamed(bbnsName)
 	if err != nil {
 		fmt.Printf("failed to netns.NewNamed %s: %s\n", bbnsName, err)
@@ -69,12 +69,12 @@ func (lm *NtlBrLinkManager) CleanAllBbNs() error {
 
 	/* Destroy all netns */
 	destroyCommand := exec.Command(
-		"ip", "netns", "-all", "del")
+		"ip", "-all", "netns", "del")
 	destroyCommand.Stdout = os.Stdout
 	destroyCommand.Run()
 
 	/* Use multiple "ip link add ttest-link" to probe whether rtnl_lock is released by netns deletion */
-	testTime := 100
+	testTime := 20
 	probeLink := &netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: "probe-dummy",
@@ -92,6 +92,7 @@ func (lm *NtlBrLinkManager) CleanAllBbNs() error {
 			fmt.Printf("failed to LinkDel: %s", err)
 			return err
 		}
+		end = time.Now()
 		fmt.Printf("Probe %d time: %dms\n", i, end.Sub(start).Milliseconds())
 	}
 	end = time.Now()
