@@ -10,54 +10,76 @@ import (
 )
 
 var args struct {
-	Operation          string
-	Algorithm          string
-	Topofile           string
-	LocalPhyIntf       string
-	ServerConfigFile   string
-	NetworkManagerType string
+	Operation        string
+	BackboneNsNum    int
+	Algorithm        string
+	Topofile         string
+	LinkManagerType  string
+	NodeManagerType  string
+	DisableIpv6      int
+	ServerConfigFile string
+	ServerID         int
 }
 
 func parseArgs() {
 	/* Parse arguments */
-	flag.StringVar(
-		&args.Operation, "operation", "",
-		"Operation [setup|destroy]")
+	// flag.StringVar(
+	// 	&args.Operation, "operation", "",
+	// 	"Operation [setup|clean]")
 	flag.StringVar(
 		&args.Operation, "o", "",
-		"Operation [setup|destroy]")
-	flag.StringVar(
-		&args.Algorithm, "algo", "",
-		"Interleave algorithm [naive|degree|dynamic|weighted_dynamic|best_weighted_dynamic]")
+		"Operation [setup|clean]")
+	// flag.IntVar(
+	// 	&args.BackboneNsNum, "bb-ns-num", 1,
+	// 	"# of backbone network namespaces")
+	flag.IntVar(
+		&args.BackboneNsNum, "b", 1,
+		"# of backbone network namespaces")
+	// flag.StringVar(
+	// 	&args.Algorithm, "algo", "",
+	// 	"Interleave algorithm [naive|degree|dynamic|weighted_dynamic|best_weighted_dynamic]")
 	flag.StringVar(
 		&args.Algorithm, "a", "",
 		"Interleave algorithm [naive|degree|dynamic|weighted_dynamic|best_weighted_dynamic]")
-	flag.StringVar(
-		&args.Topofile, "topofile", "",
-		"Name of topology file")
+	// flag.StringVar(
+	// 	&args.Topofile, "topofile", "",
+	// 	"Name of topology file")
 	flag.StringVar(
 		&args.Topofile, "t", "",
 		"Name of topology file")
+	// flag.StringVar(
+	// 	&args.LinkManagerType, "link-manager", "",
+	// 	"Type of link manager [ntlbr]")
 	flag.StringVar(
-		&args.NetworkManagerType, "manager", "",
-		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr|ntlptnc|ntlbrnc]")
+		&args.LinkManagerType, "l", "",
+		"Type of link manager [ntlbr]")
+	// flag.StringVar(
+	// 	&args.NodeManagerType, "node-mamager", "",
+	// 	"Type of node manager [cctr]")
 	flag.StringVar(
-		&args.NetworkManagerType, "m", "",
-		"Type of network manager [iprpt|iprbr|ntlpt|ntlbr|ntlptnc|ntlbrnc]")
-	flag.StringVar(
-		&args.LocalPhyIntf, "phyintf", "",
-		"Name of physical interface")
-	flag.StringVar(
-		&args.LocalPhyIntf, "p", "",
-		"Name of physical interface")
-	flag.StringVar(
-		&args.ServerConfigFile, "serverfile", "",
-		"Name of server config file")
+		&args.NodeManagerType, "N", "",
+		"Type of node manager [cctr]")
+	// flag.IntVar(
+	// 	&args.DisableIpv6, "disable-ipv6", 0,
+	// 	"Value of sysctl disable_ipv6")
+	flag.IntVar(
+		&args.DisableIpv6, "d", 0,
+		"Value of sysctl disable_ipv6")
+	// flag.StringVar(
+	// 	&args.ServerConfigFile, "server-file", "",
+	// 	"Name of server config file")
 	flag.StringVar(
 		&args.ServerConfigFile, "s", "",
 		"Name of server config file")
+	// flag.IntVar(
+	// 	&args.ServerID, "server-id", 0,
+	// 	"ID of current server in server-file")
+	flag.IntVar(
+		&args.ServerID, "i", 0,
+		"ID of current server in server-file")
 	flag.Parse()
 
+	/* Check whether args are valid */
 	if args.Operation == "" {
 		fmt.Println("Please notify OPERATION")
 		return
@@ -70,8 +92,12 @@ func parseArgs() {
 		fmt.Println("Please notify TOPOFILE")
 		return
 	}
-	if args.NetworkManagerType == "" {
-		fmt.Println("Please notify NETWORK_MANAGER")
+	if args.LinkManagerType == "" {
+		fmt.Println("Please notify LINK_MANAGER")
+		return
+	}
+	if args.NodeManagerType == "" {
+		fmt.Println("Please notify NODE_MANAGER")
 		return
 	}
 }
@@ -84,8 +110,8 @@ func main() {
 	operation := args.Operation
 
 	/* Initialize global variables */
-	network.SetLocalPhyIntf(args.LocalPhyIntf)
 	network.ConfigServers(args.ServerConfigFile)
+	network.ConfigEnvs(args.ServerID, args.DisableIpv6)
 
 	/* Initialize graph file */
 	graph, err := algo.ReadGraphFromFile(topofile)
@@ -113,7 +139,7 @@ func main() {
 		fmt.Printf("Invalid network algorithm: %v.\n", algorithm)
 		return
 	}
-	if operation == "destroy" {
+	if operation == "clean" {
 		// Reverse the order slices along the first dimension
 		left, right := 0, len(nodeOrder)-1
 		for left < right {
@@ -123,7 +149,8 @@ func main() {
 			right--
 		}
 	}
-	/* Calculate acculation of nodes */
+
+	/* Calculate accumulation of nodes */
 	accNodeNum := 0
 	for nodeNum := range curEdgeNumSeq {
 		if nodeNum == 0 {
@@ -137,53 +164,52 @@ func main() {
 	fmt.Println("accNodeNum:", accNodeNum)
 	end := time.Now()
 	fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
-
 	edgeSum := 0
 	for _, edgeOrderElement := range edgeOrder {
 		edgeSum += len(edgeOrderElement)
 	}
 	fmt.Println("edgeSum:", edgeSum)
 
-	/* Compute interleaving order of node/link setup */
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	var networkManager network.NetworkManager
-	switch args.NetworkManagerType {
-	case "iprpt":
-		networkManager = &network.IproutePassthroughNetworkManager{}
-	case "iprbr":
-		networkManager = &network.IprouteBridgeNetworkManager{}
-	case "ntlpt":
-		networkManager = &network.NetlinkPassthroughNetworkManager{}
+	var linkManager network.LinkManager
+	switch args.LinkManagerType {
 	case "ntlbr":
-		networkManager = &network.NetlinkBridgeNetworkManager{}
-	case "ntlptnc":
-		networkManager = &network.NetlinkPassthroughNsCacheNetworkManager{}
-	case "ntlbrnc":
-		networkManager = &network.NetlinkBridgeNsCacheNetworkManager{}
-	case "ntlbrid":
-		networkManager = &network.NetlinkBridgeNsIndexNetworkManager{}
-	case "ntlbrbk":
-		networkManager = &network.NetlinkBrokenBridgeNetworkManager{}
+		linkManager = &network.NtlBrLinkManager{}
 	default:
-		fmt.Printf("Invalid network manager: %v.\n", args.NetworkManagerType)
+		fmt.Printf("Invalid link manager: %v.\n", args.LinkManagerType)
+		return
+	}
+
+	var nodeManager network.NodeManager
+	switch args.NodeManagerType {
+	case "cctr":
+		nodeManager = &network.CctrNodeManager{}
+	default:
+		fmt.Printf("Invalid node manager: %v.\n", args.NodeManagerType)
 		return
 	}
 
 	/* Execute operation */
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	start = time.Now()
 	switch operation {
 	case "setup":
 		err = network.NetworkSetup(
-			networkManager, graph, nodeOrder, edgeOrder)
-	case "destroy":
-		err = network.NetworkDestroy(
-			networkManager, graph, nodeOrder, edgeOrder)
+			linkManager, nodeManager,
+			graph, nodeOrder, edgeOrder,
+			args.BackboneNsNum)
+	case "clean":
+		err = network.NetworkClean(
+			linkManager, nodeManager,
+			graph, nodeOrder, edgeOrder,
+			args.BackboneNsNum)
 	}
 	if err != nil {
 		fmt.Printf("Error: %v.\n", err)
 	}
 	end = time.Now()
 	fmt.Printf("Network operation time: %.2fs\n", end.Sub(start).Seconds())
+
+	linkManager.Delete()
 }

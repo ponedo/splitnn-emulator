@@ -51,6 +51,8 @@ func (pq *PriorityQueue) Update(node *Node, newContribution int) {
 type Graph struct {
 	AdjacencyList    map[int][]int
 	DanglingEdgeList map[int][][3]int // externalNodeID, serverID, vxlanID
+	NodeNum          int
+	EdgeNum          int
 }
 
 // NewGraph initializes a new graph
@@ -65,4 +67,13 @@ func NewGraph() *Graph {
 func (g *Graph) AddEdge(u, v int) {
 	g.AdjacencyList[u] = append(g.AdjacencyList[u], v)
 	g.AdjacencyList[v] = append(g.AdjacencyList[v], u)
+	g.EdgeNum += 1
+}
+
+func (g *Graph) GetNodeNum() int {
+	return len(g.AdjacencyList)
+}
+
+func (g *Graph) GetEdgeNum() int {
+	return g.EdgeNum
 }
