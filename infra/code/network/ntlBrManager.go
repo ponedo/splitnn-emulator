@@ -146,20 +146,20 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	vethOuti := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name:        vethNamei,
-			MTU:         1450,
-			Flags:       net.FlagUp,
-			MasterIndex: br.Index,
+			Name:  vethNamei,
+			MTU:   1450,
+			Flags: net.FlagUp,
+			// MasterIndex: br.Index,
 		},
 		PeerName:      vethNamei,
 		PeerNamespace: netlink.NsFd(nodeiNetNs),
 	}
 	vethOutj := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name:        vethNamej,
-			MTU:         1450,
-			Flags:       net.FlagUp,
-			MasterIndex: br.Index,
+			Name:  vethNamej,
+			MTU:   1450,
+			Flags: net.FlagUp,
+			// MasterIndex: br.Index,
 		},
 		PeerName:      vethNamej,
 		PeerNamespace: netlink.NsFd(nodejNetNs),
@@ -179,10 +179,12 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	if err := netlink.LinkAdd(br); err != nil {
 		return fmt.Errorf("failed to create bridge: %s", err)
 	}
+	vethOuti.Attrs().MasterIndex = br.Index
 	err = netlink.LinkAdd(vethOuti)
 	if err != nil {
 		return fmt.Errorf("failed to create veth: %s", err)
 	}
+	vethOutj.Attrs().MasterIndex = br.Index
 	err = netlink.LinkAdd(vethOutj)
 	if err != nil {
 		return fmt.Errorf("failed to create veth: %s", err)
@@ -257,10 +259,10 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	vethOuti := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name:        vethNamei,
-			MTU:         1450,
-			Flags:       net.FlagUp,
-			MasterIndex: br.Index,
+			Name:  vethNamei,
+			MTU:   1450,
+			Flags: net.FlagUp,
+			// MasterIndex: br.Index,
 		},
 		PeerName:      vethNamei,
 		PeerNamespace: netlink.NsFd(nodeiNetNs),
@@ -290,6 +292,7 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	if err := netlink.LinkAdd(br); err != nil {
 		return fmt.Errorf("failed to create bridge: %s", err)
 	}
+	vethOuti.Attrs().MasterIndex = br.Index
 	err = netlink.LinkAdd(vethOuti)
 	if err != nil {
 		return fmt.Errorf("failed to create VethPeer in nodeiNetNs: %s", err)

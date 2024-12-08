@@ -18,8 +18,20 @@ type CctrNodeManager struct {
 
 func (nm *CctrNodeManager) Init() error {
 	nm.nodeId2Handle = make(map[int]netns.NsHandle)
+	var err error
 	nm.nodeTmpDir = path.Join(TmpDir, "nodes")
-	os.MkdirAll(nm.nodeTmpDir, os.ModePerm)
+	if Operation == "setup" {
+		err = os.RemoveAll(nm.nodeTmpDir)
+		if err != nil {
+			fmt.Printf("Error RemoveAll: %s\n", err)
+			return err
+		}
+	}
+	err = os.MkdirAll(nm.nodeTmpDir, os.ModePerm)
+	if err != nil {
+		fmt.Printf("Error MkdirAll: %s\n", err)
+		return err
+	}
 	return nil
 }
 
@@ -33,7 +45,11 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 
 	nodeName := "node" + strconv.Itoa(nodeId)
 	baseDir := path.Join(nm.nodeTmpDir, nodeName)
-	os.MkdirAll(baseDir, os.ModePerm)
+	err := os.MkdirAll(baseDir, os.ModePerm)
+	if err != nil {
+		fmt.Printf("Error MkdirAll: %s\n", err)
+		return err
+	}
 	hostName := nodeName
 	pidFilePath := path.Join(baseDir, "pid.txt")
 	pidFileArg := "--pid-file=" + pidFilePath
@@ -49,7 +65,7 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 
 	// Setup command
 	SetupNodeCommand := exec.Command(
-		CctrPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v")
+		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v")
 	SetupNodeCommand.Stdout = runLogFile
 	SetupNodeCommand.Stderr = runLogFile
 	SetupNodeCommand.Run()
@@ -100,7 +116,7 @@ func (nm *CctrNodeManager) CleanNode(nodeId int) error {
 	defer killLogFile.Close() // Ensure the file is closed after the program finishes
 
 	KillNodeCommand := exec.Command(
-		CctrPath, "kill", strconv.Itoa(pid), "-v")
+		CctrBinPath, "kill", strconv.Itoa(pid), "-v")
 	KillNodeCommand.Stdout = killLogFile
 	KillNodeCommand.Stderr = killLogFile
 	KillNodeCommand.Run()

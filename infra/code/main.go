@@ -3,10 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"interleave_algo_test/algo"
-	"interleave_algo_test/network"
+	"log"
+	"os"
+	"path"
 	"runtime"
 	"time"
+	"topo_setup_test/algo"
+	"topo_setup_test/network"
 )
 
 var args struct {
@@ -102,6 +105,19 @@ func parseArgs() {
 	}
 }
 
+var logFile *os.File
+
+func redirectOutput(workDir string, operation string) {
+	var err error
+	logPath := path.Join(workDir, "tmp", operation+"_log.txt")
+	logFile, err = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		log.Fatalf("Failed to open file: %v", err)
+	}
+	os.Stdout = logFile
+	os.Stderr = logFile
+}
+
 func main() {
 	parseArgs()
 
@@ -109,9 +125,12 @@ func main() {
 	algorithm := args.Algorithm
 	operation := args.Operation
 
-	/* Initialize global variables */
+	/* Initialize network-related global variables */
 	network.ConfigServers(args.ServerConfigFile)
-	network.ConfigEnvs(args.ServerID, args.DisableIpv6)
+	network.ConfigEnvs(args.ServerID, operation, args.DisableIpv6)
+
+	/* Redirect stdout and stderr */
+	redirectOutput(network.ServerList[args.ServerID].WorkDir, operation)
 
 	/* Initialize graph file */
 	graph, err := algo.ReadGraphFromFile(topofile)
@@ -170,6 +189,7 @@ func main() {
 	}
 	fmt.Println("edgeSum:", edgeSum)
 
+	/* Prepare link and node managers */
 	var linkManager network.LinkManager
 	switch args.LinkManagerType {
 	case "ntlbr":
@@ -178,7 +198,6 @@ func main() {
 		fmt.Printf("Invalid link manager: %v.\n", args.LinkManagerType)
 		return
 	}
-
 	var nodeManager network.NodeManager
 	switch args.NodeManagerType {
 	case "cctr":
@@ -211,5 +230,14 @@ func main() {
 	end = time.Now()
 	fmt.Printf("Network operation time: %.2fs\n", end.Sub(start).Seconds())
 
-	linkManager.Delete()
+	/* Archive node runtime logs */
+	err = network.ArchiveCctrLog(operation,
+		graph, nodeOrder, edgeOrder)
+	if err != nil {
+		fmt.Printf("ArchiveLog error: %v.\n", err)
+	}
+
+	/* Clean env */
+	network.CleanEnvs(args.Operation)
+	logFile.Close()
 }

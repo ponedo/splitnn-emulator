@@ -63,11 +63,10 @@ func NewGraph() *Graph {
 	}
 }
 
-// // AddEdge adds an edge to the graph
-// func (g *Graph) AddEdge(u, v int) {
-// 	g.AdjacencyList[u] = append(g.AdjacencyList[u], v)
-// 	g.AdjacencyList[v] = append(g.AdjacencyList[v], u)
-// }
+// AddEdge adds an edge to the graph
+func (g *Graph) GetNodeNum() int {
+	return len(g.AdjacencyList)
+}
 
 func (g *Graph) GetEdgeNum() int {
 	edgeNum := 0

@@ -2,9 +2,9 @@ package network
 
 import (
 	"fmt"
-	"interleave_algo_test/algo"
 	"os"
 	"time"
+	"topo_setup_test/algo"
 
 	"github.com/vishvananda/netns"
 )
@@ -42,26 +42,58 @@ func NetworkSetup(
 		return err
 	}
 
+	tmpTime := time.Now()
+	nodeNum := g.GetNodeNum()
+	reportTime := 100
+	nodePerReport := nodeNum / reportTime
 	linkPerBackBoneNs := (g.GetEdgeNum() + backBoneNum - 1) / backBoneNum
 	for i, nodeId := range nodeOrder {
+		/* Progress reporter */
+		if nodePerReport > 0 && i%nodePerReport == 0 {
+			progress := 100 * i / nodeNum
+			curTime := time.Now()
+			fmt.Printf("%d%% nodes are added, time elapsed from last report: %dms\n", progress, curTime.Sub(tmpTime).Milliseconds())
+			tmpTime = time.Now()
+		}
+
+		/* Setup next node and connectable links */
 		startNodeTime := time.Now()
 		err = nm.SetupNode(nodeId)
 		if err != nil {
 			return err
 		}
 		nodeTotalTime += time.Since(startNodeTime)
+
+		_, err = LinkLogFile.WriteString(
+			fmt.Sprintf("Node %d\n", nodeId))
+		if err != nil {
+			return err
+		}
+
 		startLinkTime := time.Now()
 		for _, edge := range edgeOrder[i] {
+			curLinkStartTime := time.Now()
+			/* Create new backbone network namespace on demand */
 			if curLinkNum%linkPerBackBoneNs == 0 {
 				err = lm.SetupAndEnterBbNs()
 				if err != nil {
 					return err
 				}
 			}
+			/* Setup connectable links */
 			err = lm.SetupLink(edge[0], edge[1], edge[2], edge[3])
 			if err != nil {
 				return err
 			}
+
+			curLinkTime := time.Since(curLinkStartTime)
+			curLinkTimeInNs := curLinkTime.Nanoseconds()
+			_, err = LinkLogFile.WriteString(
+				fmt.Sprintf("Link no.%d %dns\n", curLinkNum, curLinkTimeInNs))
+			if err != nil {
+				return err
+			}
+
 			curLinkNum += 1
 		}
 		linkTotalTime += time.Since(startLinkTime)
