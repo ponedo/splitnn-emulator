@@ -182,7 +182,7 @@ def save_csv_files(df, csv_dir):
         print(csv_filepath)
 
 
-def plot_figure(df, x_scale, y_value, topo_type, op, figure_dir):
+def plot_figure(df, x_scale, y_value, y_value_unit, testcase_label, curve_groupby, figure_dir):
     # Check validity of arguments
     if x_scale not in ["node_num", "edge_num"]:
         print(f"Invalid x_scale {x_scale}")
@@ -205,6 +205,19 @@ def plot_figure(df, x_scale, y_value, topo_type, op, figure_dir):
     for (nm, algo), group in df.groupby(['nm', 'algo']):
         plt.plot(group[x_scale], group[y_value], marker='o', label=f'{nm}-{algo}')
 
+        
+    # Iterate through unique curves
+    for group_fields, group in df.groupby(curve_groupby):
+        if isinstance(group_fields, str):
+            label = group_fields
+        elif isinstance(group_fields, tuple):
+            label = '-'.join([str(f) for f in group_fields])
+        else:
+            print(f"Invalid group fields \" {group_fields}\" of type {type(group_fields)}")
+            exit(1)
+        plt.plot(group[x_scale], group[y_value], marker='o', label=label)
+
+
     # Draw vertical dashed lines and label them with D values
     labeled_x_values = set()
     # Draw vertical dashed lines and label them at the max E for each unique C value
@@ -221,15 +234,16 @@ def plot_figure(df, x_scale, y_value, topo_type, op, figure_dir):
     #         labeled_x_values.add(row[x_scale])
 
     # Adding labels and title
+    title = f"{testcase_label}_{x_scale} ({y_value_unit})"
     plt.xlabel(x_scale)
     plt.ylabel(y_value)
-    plt.title(f'{topo_type} topology {op} time')
+    plt.title(title)
     plt.legend()
     plt.grid()
 
     # Save figure
     plt.savefig(
-        os.path.join(figure_dir, f'{topo_type}-{op}-{x_scale}-{y_value}.png'),
+        os.path.join(figure_dir, f'{title}-{x_scale}-{y_value}.png'),
         bbox_inches='tight')  # You can specify a different filename or format
     plt.close()
 
@@ -246,10 +260,15 @@ def plot_csv_file(csv_filepath, figure_dir):
     elif op == "destroy":
         y_values = ["node_destroy_time", "link_destroy_time", "network_destroy_time"]
     x_scales = ["node_num", "edge_num"]
+    testcase_label = f"{topo_type}_{op}"
+    y_value_unit = "s"
+    curve_groupby = ["nm", "algo"]
 
     for x_scale in x_scales:
         for y_value in y_values:
-            plot_figure(df, x_scale, y_value, topo_type, op, figure_dir)
+            plot_figure(
+                df, x_scale, y_value, y_value_unit,
+                testcase_label, curve_groupby, figure_dir)
 
 
 def plot_csv_files(csv_dir, figure_dir):

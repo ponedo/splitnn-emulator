@@ -1,7 +1,7 @@
 import sys
 import argparse
 
-def generate_grid_topology(x, y, filename):
+def generate_grid_topology(x, y, filepath):
     nodes = []
     edges = []
 
@@ -37,7 +37,7 @@ def generate_grid_topology(x, y, filename):
                     edges.append((node_id, top_neighbor))
 
     # Write nodes and edges to the output file
-    with open(filename, 'w') as f:
+    with open(filepath, 'w') as f:
         # Write nodes
         f.write(' '.join(map(str, nodes)) + '\n')
         # Write edges
@@ -49,16 +49,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A script to generate positions and events')
     parser.add_argument('x', type=int, help='Grid topology length')
     parser.add_argument('y', type=int, help='Grid topology width')
-    parser.add_argument('filename', type=str, help='Output file name')
+    parser.add_argument('filepath', type=str, help='Output file name')
     args = parser.parse_args()
 
     if len(sys.argv) != 4:
-        print("Usage: python generate_grid_topology.py <x> <y> <output_filename>")
+        print("Usage: python generate_grid_topology.py <x> <y> <output_filepath>")
         sys.exit(1)
 
     x = args.x
     y = args.y
-    filename = args.filename
+    filepath = args.filepath
 
-    generate_grid_topology(x, y, filename)
-    print(f"Grid topology with {x}x{y} nodes and toroidal edges generated in {filename}.")
+    generate_grid_topology(x, y, filepath)
+    print(f"Grid topology with {x}x{y} nodes and toroidal edges generated in {filepath}.")

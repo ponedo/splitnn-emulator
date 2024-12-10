@@ -1,12 +1,13 @@
 import metis
+import shutil
 import argparse
 
-def read_graph_from_file(filename):
+def read_graph_from_file(filepath):
     """Reads the graph from the old format and returns a node list and adjacency list in the correct format."""
     nodes = []
     adjacency_list = {}
 
-    with open(filename, 'r') as f:
+    with open(filepath, 'r') as f:
         # Read the first line to get node indices
         nodes = list(map(int, f.readline().split()))
 
@@ -36,9 +37,9 @@ def create_metis_adjacency_list(nodes, adjacency_list):
 
     return metis_adjacency_list, node_to_index, index_to_node
 
-def write_subgraph_to_file(filename, nodes, edges, dangling_edges):
+def write_subgraph_to_file(filepath, nodes, edges, dangling_edges):
     """Writes the subgraph to the new format file."""
-    with open(filename, 'w') as f:
+    with open(filepath, 'w') as f:
         # Write nodes
         f.write(' '.join(map(str, nodes)) + '\n')
 
@@ -50,9 +51,17 @@ def write_subgraph_to_file(filename, nodes, edges, dangling_edges):
         for edge in dangling_edges:
             f.write(f"{edge[0]} {edge[1]}\n")
 
-def partition_graph(filename, num_partitions):
+def partition_graph(filepath, num_partitions):
     """Partitions the graph into num_partitions using METIS and writes each subgraph."""
-    nodes, adjacency_list = read_graph_from_file(filename)
+    nodes, adjacency_list = read_graph_from_file(filepath)
+
+    if num_partitions == 1:
+        
+        tmp_filepath_arr = filepath.strip().split('.')
+        tmp_filepath_arr = tmp_filepath_arr[0:1] + [f"sub0"] + tmp_filepath_arr[1:]
+        output_filepath = '.'.join(tmp_filepath_arr)
+        shutil.copyfile(filepath, output_filepath)
+        return
 
     # Convert adjacency list to METIS format with correct indices
     metis_adjacency_list, node_to_index, index_to_node = create_metis_adjacency_list(nodes, adjacency_list)
@@ -96,14 +105,14 @@ def partition_graph(filename, num_partitions):
 
     # Write each subgraph to a file in the new format
     for i in range(num_partitions):
-        tmp_filename_arr = filename.strip().split('.')
-        tmp_filename_arr = tmp_filename_arr[0:1] + [f"sub{i}"] + tmp_filename_arr[1:]
-        output_filename = '.'.join(tmp_filename_arr)
-        write_subgraph_to_file(output_filename,
+        tmp_filepath_arr = filepath.strip().split('.')
+        tmp_filepath_arr = tmp_filepath_arr[0:1] + [f"sub{i}"] + tmp_filepath_arr[1:]
+        output_filepath = '.'.join(tmp_filepath_arr)
+        write_subgraph_to_file(output_filepath,
                                subgraphs[i]['nodes'],
                                subgraphs[i]['edges'],
                                subgraphs[i]['dangling'])
-        print(f"Subgraph {i} written to {output_filename}")
+        print(f"Subgraph {i} written to {output_filepath}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A script to generate positions and events')
@@ -111,7 +120,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--num-partition', type=int, required=True, help='# of partitions')
     args = parser.parse_args()
 
-    input_filename = args.input_file
+    input_filepath = args.input_file
     num_partitions = args.num_partition
 
-    partition_graph(input_filename, num_partitions)
+    partition_graph(input_filepath, num_partitions)

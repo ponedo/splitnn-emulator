@@ -1,7 +1,7 @@
 import yaml
 import argparse
 
-def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
+def generate_clos_topology_yaml(k, filepath='clos_topology.yaml'):
     nodes = []
     edges = []
 
@@ -78,7 +78,7 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
 
     print(f"Writing topology into file...")
     # Write nodes and edges to the output file
-    with open(filename, 'w') as f:
+    with open(filepath, 'w') as f:
         # Write nodes
         f.write(' '.join(map(str, nodes)) + '\n')
         # Write edges
@@ -94,10 +94,10 @@ def generate_clos_topology_yaml(k, filename='clos_topology.yaml'):
 def main():
     parser = argparse.ArgumentParser(description='Generate CLOS topology YAML for Containerlab.')
     parser.add_argument('k', type=int, help='Fat Tree parameter (number of ports per switch)')
-    parser.add_argument('filename', type=str, help='Output file name')
+    parser.add_argument('filepath', type=str, help='Output file name')
     args = parser.parse_args()
 
-    generate_clos_topology_yaml(args.k, args.filename)
+    generate_clos_topology_yaml(args.k, args.filepath)
 
 
 if __name__ == "__main__":

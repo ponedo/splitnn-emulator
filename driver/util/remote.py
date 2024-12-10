@@ -1,5 +1,6 @@
 import os
 import paramiko
+from scp import SCPClient
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 class RemoteMachine:
@@ -10,7 +11,8 @@ class RemoteMachine:
         self.port = port
         self.working_dir = working_dir
         self.ssh = None
-        self.sftp = None
+        self.scp = None
+        # self.sftp = None
 
     def connect(self):
         """
@@ -20,6 +22,7 @@ class RemoteMachine:
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self.ssh.connect(self.hostname, port=self.port, username=self.username, password=self.password)
+            self.scp = SCPClient(self.ssh.get_transport())
             print(f"Connected to {self.hostname}")
         except Exception as e:
             print(f"Failed to connect to {self.hostname}: {str(e)}")
@@ -58,7 +61,7 @@ class RemoteMachine:
             # Capture stderr for any potential errors
             errors = stderr.read().decode()
 
-            if errors:
+            if errors and not errors.startswith("[sudo]"):
                 print(f"Errors:\n{errors}")
             else:
                 if output_file:
@@ -71,84 +74,88 @@ class RemoteMachine:
             return None
 
 
-    def send_file(self, local_file_path, remote_file_path):
-        """
-        Sends and overwrites a file to the remote machine.
-        """
-        if self.ssh is None:
-            print("Not connected to any remote machine.")
-            return None
-        try:
-            if self.sftp is None:
-                self.sftp = self.ssh.open_sftp()
+    # def send_file(self, local_file_path, remote_file_path):
+    #     """
+    #     Sends and overwrites a file to the remote machine.
+    #     """
+    #     if self.ssh is None:
+    #         print("Not connected to any remote machine.")
+    #         return None
+    #     try:
+    #         if self.sftp is None:
+    #             self.sftp = self.ssh.open_sftp()
 
-            self.sftp.put(local_file_path, remote_file_path)
-            print(f"File {local_file_path} successfully transferred to {remote_file_path}")
-        except Exception as e:
-            print(f"Failed to send file: {str(e)}")
-            return None
+    #         self.sftp.put(local_file_path, remote_file_path)
+    #         print(f"File {local_file_path} successfully transferred to {remote_file_path}")
+    #     except Exception as e:
+    #         print(f"Failed to send file: {str(e)}")
+    #         return None
 
-    def receive_file(self, remote_file_path, local_file_path):
-        """
-        Receives a file from the remote machine and saves it to the local machine.
+    # def receive_file(self, remote_file_path, local_file_path):
+    #     """
+    #     Receives a file from the remote machine and saves it to the local machine.
         
-        :param remote_file_path: Path to the file on the remote machine.
-        :param local_file_path: Path where the file should be saved on the local machine.
+    #     :param remote_file_path: Path to the file on the remote machine.
+    #     :param local_file_path: Path where the file should be saved on the local machine.
+    #     """
+    #     if self.ssh is None:
+    #         print("Not connected to any remote machine.")
+    #         return None
+
+    #     try:
+    #         if self.sftp is None:
+    #             self.sftp = self.ssh.open_sftp()
+
+    #         self.sftp.get(remote_file_path, local_file_path, recursive=True)
+    #         print(f"File {remote_file_path} successfully received and saved to {local_file_path}")
+    #     except Exception as e:
+    #         print(f"Failed to receive file from {self.hostname}: {str(e)}")
+    #         return None
+
+    def send_file(self, local_path, remote_path, recursive=False):
         """
-        if self.ssh is None:
+        Sends a file or directory to the remote machine.
+
+        :param local_path: Path to the local file or directory.
+        :param remote_path: Path on the remote machine.
+        :param recursive: Set to True to send a directory.
+        """
+        if self.scp is None:
             print("Not connected to any remote machine.")
             return None
-
         try:
-            if self.sftp is None:
-                self.sftp = self.ssh.open_sftp()
-
-            self.sftp.get(remote_file_path, local_file_path)
-            print(f"File {remote_file_path} successfully received and saved to {local_file_path}")
+            self.scp.put(local_path, remote_path, recursive=recursive)
+            print(f"{local_path} successfully transferred to {remote_path}")
         except Exception as e:
-            print(f"Failed to receive file from {self.hostname}: {str(e)}")
+            print(f"Failed to send {local_path}: {str(e)}")
             return None
 
-    def receive_all_files_from_directory(self, remote_directory, local_directory):
+    def receive_file(self, remote_path, local_path, recursive=False):
         """
-        Receives all files from a remote directory and saves them in a local directory.
-        
-        :param remote_directory: The directory on the remote machine from which to download files.
-        :param local_directory: The directory on the local machine where files will be saved.
+        Receives a file or directory from the remote machine.
+
+        :param remote_path: Path to the file or directory on the remote machine.
+        :param local_path: Path where the file/directory should be saved on the local machine.
+        :param recursive: Set to True to receive a directory.
         """
-        if self.ssh is None:
+        if self.scp is None:
             print("Not connected to any remote machine.")
             return None
-
         try:
-            if self.sftp is None:
-                self.sftp = self.ssh.open_sftp()
-
-            # Ensure the local directory exists
-            if not os.path.exists(local_directory):
-                os.makedirs(local_directory)
-
-            # List all files in the remote directory
-            files = self.sftp.listdir(remote_directory)
-
-            for file_name in files:
-                remote_file_path = os.path.join(remote_directory, file_name)
-                local_file_path = os.path.join(local_directory, file_name)
-
-                # Download each file
-                self.sftp.get(remote_file_path, local_file_path)
-                print(f"File {remote_file_path} successfully received and saved to {local_file_path}")
-
+            self.scp.get(remote_path, local_path, recursive=recursive)
+            print(f"{remote_path} successfully received and saved to {local_path}")
         except Exception as e:
-            print(f"Failed to receive files from directory {remote_directory} on {self.hostname}: {str(e)}")
+            print(f"Failed to receive {remote_path}: {str(e)}")
             return None
 
     def close_connection(self):
         """
         Closes the connection to the remote machine.
         """
-        if self.sftp:
-            self.sftp.close()
+        # if self.sftp:
+        #     self.sftp.close()
+        if self.scp:
+            self.scp.close()
         if self.ssh:
             self.ssh.close()
         print(f"Connection to {self.hostname} closed.")
@@ -214,14 +221,19 @@ def send_file_to_multiple_machines(machines, file_paths):
     :param machines: A list of RemoteMachine objects.
     :param file_paths: A dictionary where the key is the machine hostname and the value is a tuple (local_file_path, remote_file_path).
     """
-    def send_file_to_machine(machine, local_file_path, remote_file_path):
-        return machine.send_file(local_file_path, remote_file_path)
+    def send_file_to_machine(machine, local_file_path, remote_file_path, recursive):
+        return machine.send_file(local_file_path, remote_file_path, recursive)
 
     results = {}
     with ThreadPoolExecutor(max_workers=len(machines)) as executor:
         # Submit tasks to send different files to different remote paths on each machine
         future_to_machine = {
-            executor.submit(send_file_to_machine, machine, file_paths[machine.hostname][0], file_paths[machine.hostname][1]): machine
+            executor.submit(
+                send_file_to_machine, machine,
+                file_paths[machine.hostname][0],
+                file_paths[machine.hostname][1],
+                file_paths[machine.hostname][2]
+            ): machine
             for machine in machines if machine.hostname in file_paths
         }
 
@@ -244,14 +256,19 @@ def receive_file_from_multiple_machines(machines, file_paths):
     :param file_paths: A dictionary where the key is the machine hostname and the value is a tuple:
                        (remote_file_path, local_file_path).
     """
-    def receive_file_from_machine(machine, remote_file_path, local_file_path):
-        return machine.receive_file(remote_file_path, local_file_path)
+    def receive_file_from_machine(machine, remote_file_path, local_file_path, recursive):
+        return machine.receive_file(remote_file_path, local_file_path, recursive)
 
     results = {}
     with ThreadPoolExecutor(max_workers=len(machines)) as executor:
         # Submit tasks to receive files concurrently from multiple machines
         future_to_machine = {
-            executor.submit(receive_file_from_machine, machine, file_paths[machine.hostname][0], file_paths[machine.hostname][1]): machine
+            executor.submit(
+                receive_file_from_machine, machine,
+                file_paths[machine.hostname][0],
+                file_paths[machine.hostname][1],
+                file_paths[machine.hostname][2]
+            ): machine
             for machine in machines if machine.hostname in file_paths
         }
 
@@ -261,36 +278,6 @@ def receive_file_from_multiple_machines(machines, file_paths):
             try:
                 future.result()
                 results[machine.hostname] = f"File received successfully from {machine.hostname}"
-            except Exception as e:
-                results[machine.hostname] = f"Error: {str(e)}"
-
-    return results
-
-def receive_files_from_multiple_machines(machines, directories):
-    """
-    Receives all files from a remote directory and saves them to a local directory on multiple machines.
-    
-    :param machines: A list of RemoteMachine objects.
-    :param directories: A dictionary where the key is the machine hostname and the value is a tuple:
-                        (remote_directory, local_directory).
-    """
-    def receive_files_from_machine(machine, remote_directory, local_directory):
-        return machine.receive_all_files_from_directory(remote_directory, local_directory)
-
-    results = {}
-    with ThreadPoolExecutor(max_workers=len(machines)) as executor:
-        # Submit tasks to receive files concurrently from multiple machines
-        future_to_machine = {
-            executor.submit(receive_files_from_machine, machine, directories[machine.hostname][0], directories[machine.hostname][1]): machine
-            for machine in machines if machine.hostname in directories
-        }
-
-        # Collect results as they complete
-        for future in as_completed(future_to_machine):
-            machine = future_to_machine[future]
-            try:
-                future.result()
-                results[machine.hostname] = f"All files received successfully from {machine.hostname}"
             except Exception as e:
                 results[machine.hostname] = f"Error: {str(e)}"
 

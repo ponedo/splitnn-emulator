@@ -3,170 +3,318 @@ import time
 import json
 import argparse
 import subprocess
+import shutil
+from copy import deepcopy
 from scripts.partition_topo import partition_graph
-from util.remote import RemoteMachine, \
-    execute_command_on_multiple_machines, send_file_to_multiple_machines
+from itertools import product
+from util.remote import *
 
-RUNTIME=1
+############################ Constants ###############################
 
-topos = [
-    ["grid", "10", "10"],
-    ["grid", "20", "20"],
-    ["grid", "30", "30"],
-    ["grid", "40", "40"],
-    ["grid", "50", "50"],
-    ["grid", "60", "60"],
-    ["grid", "70", "70"],
-    ["grid", "75", "75"],
-    ["grid", "80", "80"],
-    ["grid", "85", "85"],
-    ["grid", "90", "90"],
-    ["clos", "8"],
-    ["clos", "12"],
-    ["clos", "16"],
-    ["clos", "20"],
-    ["clos", "24"],
-    ["clos", "28"],
-    # ["grid", "95", "95"],
-    # ["clos", "32"],
-    # ["grid", "100", "100"],
+DRIVER_WORKDIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(DRIVER_WORKDIR) # Change cuurent working directory
+
+# REPEAT_TIME = 1
+SERVER_CONFIG_PATH = "server_config.json"
+INFRA_BIN_PATH = "bin/topo_setup_test"
+INFRA_TOPO_PATH = "tmp/topo"
+LOCAL_RESULT_DIR = "raw_results"
+REMOTE_RESULT_PATHS = [
+    ("file", "tmp/setup_log.txt"),
+    ("file", "tmp/clean_log.txt"),
+    ("file", "tmp/link_log.txt"),
+    ("dir", "tmp/cctr_log"),
+    ("dir", "tmp/kern_func"),
 ]
 
-nms = [
-    "ntlbrid",
-    "ntlbrbk",
-    # "iprpt",
-    # "ntlpt",
-    # "ntlptnc",
-    # "ntlbr",
-    # "iprbr",
-    # "ntlbrnc",
+######################### Command options ############################
+
+const_options = {
+    "s": SERVER_CONFIG_PATH
+}
+
+var_options = {
+    # Topologies
+    "t": [
+        ["grid", "10", "10"],
+        # ["grid", "20", "20"],
+        # ["grid", "30", "30"],
+        # ["grid", "40", "40"],
+        # ["grid", "50", "50"],
+        # ["grid", "60", "60"],
+        # ["grid", "70", "70"],
+        # ["grid", "75", "75"],
+        # ["grid", "80", "80"],
+        # ["grid", "85", "85"],
+        # ["grid", "90", "90"],
+        # ["clos", "8"],
+        # ["clos", "12"],
+        # ["clos", "16"],
+        # ["clos", "20"],
+        # ["clos", "24"],
+        # ["clos", "28"],
+        # ["grid", "95", "95"],
+        # ["clos", "32"],
+        # ["grid", "100", "100"],
+    ],
+
+    "b": [
+        1,
+        # 5,
+        # 10,
+        # 50,
+        # 100,
+    ],
+
+    "a": [
+        "naive",
+        # "dynamic",
+    ],
+
+    "d": [
+        0,
+        # 1
+    ],
+
+    "N": [
+        "cctr"
+    ],
+
+    "l": [
+        "ntlbr",
+    ],
+}
+
+server_spec_options = {
+    "i": lambda i: i
+}
+
+
+# If there is overlap between option keys defined above, raise an error and exit
+all_keys = [
+    set(d.keys()) \
+        for d in [const_options, var_options, server_spec_options]
 ]
+for i, keys1 in enumerate(all_keys):
+    for j, keys2 in enumerate(all_keys):
+        if i < j and keys1 & keys2:  # Find intersection
+            print(f"Overlap found between dict {i} and dict {j}: {keys1 & keys2}")
+            exit(1)
 
-algos = [
-    "naive",
-    "dynamic",
-]
+######################### Helper functions ############################
 
-# nsnums = []
-
-
-def get_vn_manage_cmd(exe_path, operation, subtopo_filename, nm, algo, phy_intf, server_config_json):
-    return f"{exe_path} -p {phy_intf} -s {server_config_json} -t {subtopo_filename} -m {nm} -a {algo} -o {operation}"
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Execute a batch of experiments')
-    args = parser.parse_args()
-
-    # Get the absolute path of the currently executing script
-    current_file_path = os.path.abspath(__file__)
-    driver_workdir = os.path.dirname(current_file_path)
-    os.chdir(driver_workdir) # Change the working directory
-    env = os.environ.copy()
-    env["METIS_DLL"]="~/.local/lib/libmetis.so"
-
-    # Read configuration of servers
-    with open('server_config.json', 'r') as f:
-        server_config = json.load(f)
-        servers = server_config["servers"]
-
-    # Connect to remote machine
+def connect_remote_machines(server_config_list):
     remote_machines = []
-    for server in servers:
+    for server in server_config_list:
         remote_machine = RemoteMachine(
             server["ipAddr"], server["user"],
             server["password"], working_dir=server["infraWorkDir"])
         machine = remote_machine.connect()
         remote_machines.append(machine)
+    return remote_machines
 
-    # Config servers on remote machines
-    server_config_src_path = os.path.join(driver_workdir, "server_config.json")
+
+def prepare_env_on_remote_machines(remote_machines, server_config_list):
+    server_config_src_path = os.path.join(DRIVER_WORKDIR, SERVER_CONFIG_PATH)
     server_config_src_dst_paths = {
         server["ipAddr"]: (
             server_config_src_path,
-            os.path.join(server["infraWorkDir"], "server_config.json"), \
-        ) for server in servers
+            os.path.join(server["infraWorkDir"], SERVER_CONFIG_PATH),
+            False
+        ) for server in server_config_list
     }
     send_file_to_multiple_machines(
         remote_machines, server_config_src_dst_paths)
-    
+
     # Recompile virtual network manager on all machines
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
                 "make", server["infraWorkDir"], None, False
-            ) for server in servers
+            ) for server in server_config_list
         }
     )
-    
-    # Run experiments for different topology
-    for topo in topos:
-        topo_name = topo[0]
-        topo_filepath = os.path.join(driver_workdir, "topo", f"{'_'.join(topo)}.txt")
 
-        # Generate topology
-        script_path = os.path.join(driver_workdir, "scripts", f"generate_{topo_name}_topo.py")
+    # # Pull docker image needed on each machine
+    # execute_command_on_multiple_machines(
+    #     remote_machines, {
+    #         server["ipAddr"]: (
+    #             f"./scripts/pull_docker_image.sh {server["dockerImageName"]}", server["infraWorkDir"], None, False
+    #         ) for server in servers
+    #     }
+    # )
+
+
+def get_full_topo_filename(topo_args):
+    return f"{'_'.join(topo_args)}.txt"
+
+
+def get_sub_topo_filename(topo_args, i):
+    full_topo_filename = get_full_topo_filename(topo_args)
+    splited_topo_filename = full_topo_filename.split('.')
+    if len(splited_topo_filename) == 1:
+        splited_sub_topo_filename = splited_topo_filename + [f"sub{i}"] # without .txt suffix
+    else:
+        splited_sub_topo_filename = splited_topo_filename[:-1] + [f"sub{i}"] + splited_topo_filename[-1:] # with .txt suffix
+    sub_topo_filename = '.'.join(splited_sub_topo_filename)
+    return sub_topo_filename
+
+
+def prepare_topology(remote_machines, topos):
+    for topo in topos:
+        topo_type = topo[0]
+        full_topo_filename = get_full_topo_filename(topo)
+        full_topo_filepath = os.path.join(DRIVER_WORKDIR, "topo", full_topo_filename)
+        generate_topo_type_script_path = os.path.join(DRIVER_WORKDIR, "scripts", f"generate_{topo_type}_topo.py")
         try:
-            generate_topology_cmd = ["python3", script_path] + topo[1:] + [topo_filepath]
+            generate_topology_cmd = \
+                ["python3", generate_topo_type_script_path] + topo[1:] + [full_topo_filepath]
         except IndexError:
-            generate_topology_cmd = ["python3", script_path, topo_filepath]
+            generate_topology_cmd = \
+                ["python3", generate_topo_type_script_path, full_topo_filepath]
         result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
 
         # Partition topology
-        partition_graph(topo_filepath, len(servers))
-        # script_path = os.path.join(driver_workdir, "scripts", f"partition_topo.py")
+        partition_graph(full_topo_filepath, len(server_config_list))
+        # script_path = os.path.join(DRIVER_WORKDIR, "scripts", f"partition_topo.py")
         # partition_topology_cmd = ["python3", script_path, "-f", topo_filepath, "-n", f"{len(servers)}"]
         # result = subprocess.run(partition_topology_cmd, capture_output=True, text=True, env=env)
 
         # Send sub-topo to servers
-        subtopo_src_dst_filepaths = {}
-        for i, server in enumerate(servers):
-            topo_filename = os.path.basename(topo_filepath)
-            topo_filename_arr = topo_filename.split('.')
-            if len(topo_filename_arr) == 1:
-                subtopo_filename_arr = topo_filename_arr + [f"sub{i}"]
-            else:
-                subtopo_filename_arr = topo_filename_arr[:-1] + [f"sub{i}"] + topo_filename_arr[-1:]
-            subtopo_filename = '.'.join(subtopo_filename_arr)
-            subtopo_src_filepath = os.path.join(os.path.dirname(topo_filepath), subtopo_filename)
-            subtopo_dst_filepath = os.path.join(server["infraWorkDir"], "tmp", subtopo_filename)
-            subtopo_src_dst_filepaths[server["ipAddr"]] = (subtopo_src_filepath, subtopo_dst_filepath)
+        sub_topo_src_dst_filepaths = {}
+        for i, server in enumerate(server_config_list):
+            sub_topo_filename = get_sub_topo_filename(topo, i)
+            sub_topo_src_filepath = os.path.join(os.path.dirname(full_topo_filepath), sub_topo_filename)
+            sub_topo_dst_filepath = os.path.join(server["infraWorkDir"], INFRA_TOPO_PATH, sub_topo_filename)
+            sub_topo_src_dst_filepaths[server["ipAddr"]] = \
+                (sub_topo_src_filepath, sub_topo_dst_filepath, False)
         send_file_to_multiple_machines(
-            remote_machines, subtopo_src_dst_filepaths)
-        
-        # Run experiments for different network managers and algorithms
-        for nm in nms:
-            for algo in algos:
-                for run_i in range(RUNTIME):
-                    # Prepare setup and destroy commands
-                    setup_commands, destroy_commands = {}, {}
-                    for i, server in enumerate(servers):
-                        exe_path = os.path.join(server["infraWorkDir"], "bin", "itl_test")
-                        subtopo_dst_filename = subtopo_src_dst_filepaths[server["ipAddr"]][1]
-                        server_config_dst_filepath = server_config_src_dst_paths[server["ipAddr"]][1]
-                        subtopo_filename = os.path.basename(subtopo_dst_filename)
-                        setup_command = get_vn_manage_cmd(
-                            os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-                            "setup", subtopo_dst_filename, nm, algo,
-                            server["phyIntf"], server_config_dst_filepath
-                        )
-                        destroy_command = get_vn_manage_cmd(
-                            os.path.join(server["infraWorkDir"], "bin", "itl_test"),
-                            "destroy", subtopo_dst_filename, nm, algo,
-                            server["phyIntf"], server_config_dst_filepath
-                        )
-                        setup_log_path = os.path.join(
-                            server["infraWorkDir"], "log", f"{nm}.{algo}.setup.run_{run_i}.{subtopo_filename}")
-                        destroy_log_path = os.path.join(
-                            server["infraWorkDir"], "log", f"{nm}.{algo}.destroy.run_{run_i}.{subtopo_filename}")
-                        setup_commands[server["ipAddr"]] = (setup_command, server["infraWorkDir"], setup_log_path, True)
-                        destroy_commands[server["ipAddr"]] = (destroy_command, server["infraWorkDir"], destroy_log_path, True)
+            remote_machines, sub_topo_src_dst_filepaths)
 
-                    # Run virtual networks
-                    execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-                    time.sleep(5) # Wait for a while
-                    execute_command_on_multiple_machines(remote_machines, destroy_commands) # Destroy virtual network
+
+def get_one_vn_manage_cmd(bin_path, operation, options):
+    vn_manage_cmd = f"{bin_path} -o {operation}"
+    for k, v in options.items():
+        v = f"{v}"
+        if " " in v:
+            print(f"Warning: an option value of virtual network management command contains space: (\"{k}\" \"{v}\")")
+        vn_manage_cmd += f" -{k} {v}"
+    return vn_manage_cmd
+
+
+def exp_cmds_iterator(
+        const_options, var_options, server_spec_options,
+        server_config_list):
+    # Iterate over all possible combiation of options
+    var_opt_keys = var_options.keys()
+    for var_opt_comb in product(*var_options.values()):
+        # Get a combination of options
+        opts = dict(zip(var_opt_keys, var_opt_comb))
+        var_opts = deepcopy(opts)
+        opts.update(const_options)
+        topo_args = opts["t"]
+        # Prepare setup/clean commands for each server
+        setup_commands, clean_commands = {}, {}
+        for i, server in enumerate(server_config_list):
+            server_i_opts = deepcopy(opts)
+            # Add server-specific option (such as server id)
+            for server_spec_opt_key, server_spec_opt_value_func in server_spec_options.items():
+                server_i_opts.update({
+                    server_spec_opt_key: server_spec_opt_value_func(i)
+                })
+            # Modify topo option
+            server_i_opts.update({
+                "t": os.path.join(INFRA_TOPO_PATH, get_sub_topo_filename(topo_args, i))
+            })
+            # Generate and cache commands
+            setup_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "setup", server_i_opts)
+            setup_commands[server["ipAddr"]] = \
+                (setup_command, server["infraWorkDir"], None, True)
+            clean_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "clean", server_i_opts)
+            clean_commands[server["ipAddr"]] = \
+                (clean_command, server["infraWorkDir"], None, True)
+        yield var_opts, setup_commands, clean_commands
+
+
+def get_one_test_log_name(var_opts):
+    var_opts['t'] = '_'.join(var_opts['t'])
+    dir_name_elements = [f"{k}--{v}" for k, v in var_opts.items()]
+    dir_name = '--'.join(dir_name_elements)
+    return dir_name
+
+
+def reap_one_test_results(remote_machines, server_config_list, cur_test_log_dir):
+    server_log_dirs = []
+    for i, server in enumerate(server_config_list):
+        server_i_log_dir = os.path.join(cur_test_log_dir, f"server{i}")
+        os.makedirs(server_i_log_dir, exist_ok=True)
+        server_log_dirs.append(server_i_log_dir)
+
+    for remote_result_path in REMOTE_RESULT_PATHS:
+        # Define different remote and local directories for each machine
+        directories = {
+            server["ipAddr"]: (
+                os.path.join(server["infraWorkDir"], remote_result_path[1]),
+                server_log_dirs[i],
+                remote_result_path[0] == "dir"
+            )
+            for server in server_config_list
+        }
+        receive_file_from_multiple_machines(remote_machines, directories)
+
+
+################################# Main ##################################
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Execute a batch of experiments')
+    args = parser.parse_args()
+
+    # env = os.environ.copy()
+    # env["METIS_DLL"]="~/.local/lib/libmetis.so"
+
+    # Read configuration of servers
+    with open(SERVER_CONFIG_PATH, 'r') as f:
+        server_config = json.load(f)
+        server_config_list = server_config["servers"]
+
+    # Connect to remote machine
+    remote_machines = connect_remote_machines(server_config_list)
+
+    # Config servers on remote machines
+    prepare_env_on_remote_machines(remote_machines, server_config_list)
+
+    # Prepare topologies and distribute them onto servers
+    topos = var_options["t"]
+    prepare_topology(remote_machines, topos)
+
+    "./bin/topo_setup_test -o setup -t tmp/topo/grid_10_10.txt -b 1 -a dynamic -d 0 -N cctr -l ntlbr -s server_config.json -i 0"\
+
+    # Prepare local repository directory for storing test results
+    server_num = len(server_config_list)
+    local_result_repo_dir = os.path.join(LOCAL_RESULT_DIR, f"result-{server_num}-servers")
+    os.makedirs(local_result_repo_dir, exist_ok=True)
+    shutil.copy(SERVER_CONFIG_PATH, local_result_repo_dir)
+
+    # Iterate over all tests with different options. Each loop yields a group of commands executing the test.
+    for var_opts, setup_commands, clean_commands in exp_cmds_iterator(
+        const_options, var_options, server_spec_options, server_config_list):
+        # Check log directory of current test
+        final_cur_test_log_dir = get_one_test_log_name(var_opts)
+        full_cur_test_log_dir = os.path.join(local_result_repo_dir, final_cur_test_log_dir)
+        if os.path.exists(full_cur_test_log_dir) and os.listdir(full_cur_test_log_dir):
+            print(f"Test {var_opts} skipped")
+            continue # Current test has been completed before, skip current iteration
+        os.makedirs(full_cur_test_log_dir, exist_ok=True)
+
+        # Execute test commands
+        print(setup_commands)
+        execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+        time.sleep(5) # Wait for a while
+        print(clean_commands)
+        execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+
+        # Reap results of current test
+        reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
 
     # Close connection
     for remote_machine in remote_machines:
