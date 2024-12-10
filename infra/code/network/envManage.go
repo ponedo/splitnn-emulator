@@ -164,7 +164,7 @@ func StopMonitor(operation string) {
 		CloseLinkLog()
 	}
 
-	//stop monitorcmd
+	/* stop monitorcmd */
 	for _, monitorCmd := range KernFuncMnCmds {
 		if monitorCmd != nil && monitorCmd.Process != nil {
 			fmt.Printf("Stopping bpftrace script with PID %d\n", monitorCmd.Process.Pid)
