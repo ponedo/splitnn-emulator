@@ -48,7 +48,7 @@ var (
 	DisableIpv6         int
 )
 
-func ConfigServers(confFileName string) {
+func ConfigServers(confFileName string) error {
 	// Read the JSON file
 	jsonFile, err := os.ReadFile(confFileName)
 	if err != nil {
@@ -60,11 +60,12 @@ func ConfigServers(confFileName string) {
 	// Parse JSON into the struct
 	err = json.Unmarshal(jsonFile, &serversData)
 	if err != nil {
-		log.Fatalf("Error parsing JSON: %v", err)
+		return fmt.Errorf("error parsing JSON: %v", err)
 	}
 
 	// Assign the parsed data to the global slice
 	ServerList = serversData.Servers
+	return nil
 }
 
 func SetLocalPhyIntf(value string) {
@@ -102,32 +103,34 @@ func PrepareRootfs(dockerImageName string) {
 	prepareCommand.Run()
 }
 
-func OpenLinkLog() {
+func OpenLinkLog() error {
 	var err error
 	LinkLogFile, err = os.OpenFile(LinkLogPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		log.Fatalf("Failed to open link log file: %v", err)
 		LinkLogFile.Close()
+		return fmt.Errorf("failed to open link log file: %v", err)
 	}
+	return nil
 }
 
 func CloseLinkLog() {
 	LinkLogFile.Close()
 }
 
-func ConfigEnvs(serverID int, operation string, disableIpv6 int) {
+func ConfigEnvs(serverID int, operation string, disableIpv6 int) error {
 	server := ServerList[serverID]
 	Operation = operation
 	SetLocalPhyIntf(server.PhyIntf)
 	SetEnvPaths(server.WorkDir, server.DockerImageName)
 	SetDisableIpv6(disableIpv6)
 	PrepareRootfs(server.DockerImageName)
+	return nil
 }
 
 func CleanEnvs(operation string) {
 }
 
-func StartMonitor(serverID int, operation string) {
+func StartMonitor(serverID int, operation string) error {
 	/* Open link setup log */
 	if operation == "setup" {
 		OpenLinkLog()
@@ -145,14 +148,14 @@ func StartMonitor(serverID int, operation string) {
 
 			//start monitorcmd
 			if err := monitorCmd.Start(); err != nil {
-				fmt.Printf("Error starting bpftrace: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error starting bpftrace: %v", err)
 			}
 			fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
 
 			KernFuncMnCmds = append(KernFuncMnCmds, monitorCmd)
 		}
 	}
+	return nil
 }
 
 func StopMonitor(operation string) {

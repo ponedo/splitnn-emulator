@@ -85,23 +85,23 @@ func parseArgs() {
 	/* Check whether args are valid */
 	if args.Operation == "" {
 		fmt.Println("Please notify OPERATION")
-		return
+		os.Exit(1)
 	}
 	if args.Algorithm == "" {
 		fmt.Println("Please notify ALGORITHM")
-		return
+		os.Exit(1)
 	}
 	if args.Topofile == "" {
 		fmt.Println("Please notify TOPOFILE")
-		return
+		os.Exit(1)
 	}
 	if args.LinkManagerType == "" {
 		fmt.Println("Please notify LINK_MANAGER")
-		return
+		os.Exit(1)
 	}
 	if args.NodeManagerType == "" {
 		fmt.Println("Please notify NODE_MANAGER")
-		return
+		os.Exit(1)
 	}
 }
 
@@ -121,28 +121,40 @@ func redirectOutput(workDir string, operation string) {
 func main() {
 	parseArgs()
 
-	topofile := args.Topofile
-	algorithm := args.Algorithm
-	operation := args.Operation
+	var err error
+	var graph *algo.Graph
+	var edgeSum, accNodeNum int
+	var nodeOrder, curEdgeNumSeq []int
+	var edgeOrder [][][4]int
+	var linkManager network.LinkManager
+	var nodeManager network.NodeManager
+	var start, end time.Time
 
 	/* Initialize network-related global variables */
-	network.ConfigServers(args.ServerConfigFile)
-	redirectOutput(network.ServerList[args.ServerID].WorkDir, operation)
-	network.ConfigEnvs(args.ServerID, operation, args.DisableIpv6)
-	network.StartMonitor(args.ServerID, operation)
+	err = network.ConfigServers(args.ServerConfigFile)
+	if err != nil {
+		goto clean
+	}
+	redirectOutput(network.ServerList[args.ServerID].WorkDir, args.Operation)
+	err = network.ConfigEnvs(args.ServerID, args.Operation, args.DisableIpv6)
+	if err != nil {
+		goto clean
+	}
+	err = network.StartMonitor(args.ServerID, args.Operation)
+	if err != nil {
+		goto clean
+	}
 
 	/* Initialize graph file */
-	graph, err := algo.ReadGraphFromFile(topofile)
+	graph, err = algo.ReadGraphFromFile(args.Topofile)
 	if err != nil {
 		fmt.Printf("Error reading graph: %v\n", err)
 		return
 	}
 
 	/* Compute interleaving node/link setup order */
-	var nodeOrder, curEdgeNumSeq []int
-	var edgeOrder [][][4]int
-	start := time.Now()
-	switch algorithm {
+	start = time.Now()
+	switch args.Algorithm {
 	case "naive":
 		nodeOrder, edgeOrder, curEdgeNumSeq = graph.NaiveOrder()
 	case "degree":
@@ -154,10 +166,10 @@ func main() {
 	case "best_weighted_dynamic":
 		nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderBestWeightedDynamic()
 	default:
-		fmt.Printf("Invalid network algorithm: %v.\n", algorithm)
+		fmt.Printf("Invalid network algorithm: %v.\n", args.Algorithm)
 		return
 	}
-	if operation == "clean" {
+	if args.Operation == "clean" {
 		// Reverse the order slices along the first dimension
 		left, right := 0, len(nodeOrder)-1
 		for left < right {
@@ -169,7 +181,7 @@ func main() {
 	}
 
 	/* Calculate accumulation of nodes */
-	accNodeNum := 0
+	accNodeNum = 0
 	for nodeNum := range curEdgeNumSeq {
 		if nodeNum == 0 {
 			continue
@@ -180,16 +192,15 @@ func main() {
 	fmt.Println("Edge Order:", edgeOrder)
 	fmt.Println("curEdgeNumSeq:", curEdgeNumSeq)
 	fmt.Println("accNodeNum:", accNodeNum)
-	end := time.Now()
+	end = time.Now()
 	fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
-	edgeSum := 0
+	edgeSum = 0
 	for _, edgeOrderElement := range edgeOrder {
 		edgeSum += len(edgeOrderElement)
 	}
 	fmt.Println("edgeSum:", edgeSum)
 
 	/* Prepare link and node managers */
-	var linkManager network.LinkManager
 	switch args.LinkManagerType {
 	case "ntlbr":
 		linkManager = &network.NtlBrLinkManager{}
@@ -197,7 +208,6 @@ func main() {
 		fmt.Printf("Invalid link manager: %v.\n", args.LinkManagerType)
 		return
 	}
-	var nodeManager network.NodeManager
 	switch args.NodeManagerType {
 	case "cctr":
 		nodeManager = &network.CctrNodeManager{}
@@ -211,7 +221,7 @@ func main() {
 	defer runtime.UnlockOSThread()
 
 	start = time.Now()
-	switch operation {
+	switch args.Operation {
 	case "setup":
 		err = network.NetworkSetup(
 			linkManager, nodeManager,
@@ -230,14 +240,15 @@ func main() {
 	fmt.Printf("Network operation time: %.2fs\n", end.Sub(start).Seconds())
 
 	/* Archive node runtime logs */
-	err = network.ArchiveCctrLog(operation,
+	err = network.ArchiveCctrLog(args.Operation,
 		graph, nodeOrder, edgeOrder)
 	if err != nil {
 		fmt.Printf("ArchiveLog error: %v.\n", err)
 	}
 
+clean:
 	/* Clean env */
-	network.StopMonitor(operation)
+	network.StopMonitor(args.Operation)
 	network.CleanEnvs(args.Operation)
 	logFile.Close()
 }
