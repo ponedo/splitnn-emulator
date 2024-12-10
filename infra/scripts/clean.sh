@@ -1,3 +1,9 @@
+rm /tmp/monitor_*
+for pid in $(ps aux | grep bpftrace | grep -v grep | awk '{print $2}'); do kill -9 $pid; done
+for pid in $(ps aux | grep cctr | grep -v grep | awk '{print $2}'); do kill -9 $pid; done
+for pid in $(ps aux | grep topo_setup_test | grep -v grep | awk '{print $2}'); do kill -9 $pid; done
+for pid in $(ps aux | grep monitor_kern_func | grep -v grep | awk '{print $2}'); do kill -9 $pid; done
+
 ip -all netns del all
 
 start=$(($(date +%s%N) / 1000000))
