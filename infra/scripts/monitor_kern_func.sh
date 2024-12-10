@@ -43,7 +43,12 @@ EOF
 
 # Run the bpftrace script and redirect its output
 mkdir -p $(dirname $OUTPUT_FILE)
-sudo bpftrace $BPFTRACE_SCRIPT > "$OUTPUT_FILE"
+trap 'kill -INT $BPFTRACE_PID' INT
+trap 'kill -TERM $BPFTRACE_PID' TERM
+bpftrace $BPFTRACE_SCRIPT > "$OUTPUT_FILE" &
+
+BPFTRACE_PID=$!
+wait $BPFTRACE_PID
 
 # Clean up
 rm -f $BPFTRACE_SCRIPT

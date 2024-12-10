@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 	"topo_setup_test/algo"
 
@@ -17,10 +18,11 @@ import (
 )
 
 type Server struct {
-	IPAddr          string `json:"ipAddr"`
-	WorkDir         string `json:"infraWorkDir"`
-	PhyIntf         string `json:"phyIntf"`
-	DockerImageName string `json:"dockerImageName"`
+	IPAddr             string     `json:"ipAddr"`
+	WorkDir            string     `json:"infraWorkDir"`
+	PhyIntf            string     `json:"phyIntf"`
+	DockerImageName    string     `json:"dockerImageName"`
+	KernFuncsToMonitor [][]string `json:"kernFuncsToMonitor"`
 }
 
 type Servers struct {
@@ -28,18 +30,22 @@ type Servers struct {
 }
 
 var (
-	Operation       string
-	ServerList      []Server
-	LocalPhyIntf    string
-	LocalPhyIntfNl  netlink.Link
-	WorkDir         string
-	TmpDir          string
-	BinDir          string
-	CctrBinPath     string
-	LinkLogPath     string
-	LinkLogFile     *os.File
-	ImageRootfsPath string
-	DisableIpv6     int
+	Operation           string
+	ServerList          []Server
+	LocalPhyIntf        string
+	LocalPhyIntfNl      netlink.Link
+	WorkDir             string
+	TmpDir              string
+	BinDir              string
+	CctrBinPath         string
+	CctrLogPath         string
+	LinkLogPath         string
+	LinkLogFile         *os.File
+	KernFuncToolRelPath string
+	KernFuncLogDir      string
+	KernFuncMnCmds      []*exec.Cmd
+	ImageRootfsPath     string
+	DisableIpv6         int
 )
 
 func ConfigServers(confFileName string) {
@@ -68,10 +74,13 @@ func SetLocalPhyIntf(value string) {
 
 func SetEnvPaths(workDir string, dockerImageName string) {
 	WorkDir = workDir
-	TmpDir = path.Join(workDir, "tmp")
-	BinDir = path.Join(workDir, "bin")
+	TmpDir = path.Join(WorkDir, "tmp")
+	BinDir = path.Join(WorkDir, "bin")
 	CctrBinPath = path.Join(BinDir, "cctr")
+	CctrLogPath = path.Join(TmpDir, "cctr_log")
 	LinkLogPath = path.Join(TmpDir, "link_log.txt")
+	KernFuncToolRelPath = path.Join("scripts", "monitor_kern_func.sh")
+	KernFuncLogDir = path.Join(TmpDir, "kern_func")
 
 	splitedImageName := strings.Split(dockerImageName, ":")
 	ImageRepo := splitedImageName[0]
@@ -113,14 +122,54 @@ func ConfigEnvs(serverID int, operation string, disableIpv6 int) {
 	SetEnvPaths(server.WorkDir, server.DockerImageName)
 	SetDisableIpv6(disableIpv6)
 	PrepareRootfs(server.DockerImageName)
-	if operation == "setup" {
-		OpenLinkLog()
-	}
 }
 
 func CleanEnvs(operation string) {
+}
+
+func StartMonitor(serverID int, operation string) {
+	/* Open link setup log */
+	if operation == "setup" {
+		OpenLinkLog()
+	}
+
+	/* Start monitoring kernel functions */
+	if operation == "setup" {
+		kernFuncs := ServerList[serverID].KernFuncsToMonitor
+		for _, funcEntry := range kernFuncs {
+			comm := funcEntry[0]
+			kernFunc := funcEntry[1]
+			outputFileName := fmt.Sprintf("%s--%s.txt", comm, kernFunc)
+			outputFilePath := path.Join(KernFuncLogDir, outputFileName)
+			monitorCmd := exec.Command(KernFuncToolRelPath, comm, kernFunc, outputFilePath)
+
+			//start monitorcmd
+			if err := monitorCmd.Start(); err != nil {
+				fmt.Printf("Error starting bpftrace: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
+
+			KernFuncMnCmds = append(KernFuncMnCmds, monitorCmd)
+		}
+	}
+}
+
+func StopMonitor(operation string) {
+	/* Close link setup log */
 	if operation == "setup" {
 		CloseLinkLog()
+	}
+
+	//stop monitorcmd
+	for _, monitorCmd := range KernFuncMnCmds {
+		if monitorCmd != nil && monitorCmd.Process != nil {
+			fmt.Printf("Stopping bpftrace script with PID %d\n", monitorCmd.Process.Pid)
+			if err := monitorCmd.Process.Signal(syscall.SIGTERM); err != nil {
+				fmt.Printf("Error stopping process %d: %v\n", monitorCmd.Process.Pid, err)
+			}
+			monitorCmd.Wait() // Wait for the process to terminate
+		}
 	}
 }
 
@@ -128,7 +177,7 @@ func ArchiveCctrLog(operation string,
 	g *algo.Graph, nodeOrder []int, edgeOrder [][][4]int) error {
 	var srcLogName string
 	var err error
-	archiveDirPath := path.Join(TmpDir, "cctr_log")
+	archiveDirPath := CctrLogPath
 
 	if operation == "setup" {
 		srcLogName = "run.log"

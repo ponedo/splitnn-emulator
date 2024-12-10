@@ -127,10 +127,9 @@ func main() {
 
 	/* Initialize network-related global variables */
 	network.ConfigServers(args.ServerConfigFile)
-	network.ConfigEnvs(args.ServerID, operation, args.DisableIpv6)
-
-	/* Redirect stdout and stderr */
 	redirectOutput(network.ServerList[args.ServerID].WorkDir, operation)
+	network.ConfigEnvs(args.ServerID, operation, args.DisableIpv6)
+	network.StartMonitor(args.ServerID, operation)
 
 	/* Initialize graph file */
 	graph, err := algo.ReadGraphFromFile(topofile)
@@ -238,6 +237,7 @@ func main() {
 	}
 
 	/* Clean env */
+	network.StopMonitor(operation)
 	network.CleanEnvs(args.Operation)
 	logFile.Close()
 }
