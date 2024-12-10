@@ -73,8 +73,8 @@ func (lm *NtlBrLinkManager) CleanAllBbNs() error {
 	destroyCommand.Stdout = os.Stdout
 	destroyCommand.Run()
 
-	/* Use multiple "ip link add ttest-link" to probe whether rtnl_lock is released by netns deletion */
-	testTime := 20
+	/* Use multiple "ip link add test-link" to probe whether rtnl_lock is released by netns deletion */
+	testTime := 50
 	probeLink := &netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: "probe-dummy",
