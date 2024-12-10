@@ -3,6 +3,7 @@ driver/results*
 driver/raw_results/
 driver/METIS/
 driver/GKlib/
+driver/batch_test_log
 infra/bin/*
 infra/tmp/img*
 infra/tmp/nodes/*
