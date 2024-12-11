@@ -93,6 +93,43 @@ func SetDisableIpv6(disableIpv6 int) {
 	DisableIpv6 = disableIpv6
 }
 
+func SetSysctlValue(path string, value string) error {
+	file, err := os.OpenFile(path, os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(value)
+	if err != nil {
+		return fmt.Errorf("failed to write value to file %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func SetKernelPtySysctl() {
+	ptyMaxPath := "/proc/sys/kernel/pty/max"
+	ptyReservePath := "/proc/sys/kernel/pty/reserve"
+
+	// Desired values
+	newMaxValue := "262144"
+	newReserveValue := "65536"
+
+	if err := SetSysctlValue(ptyMaxPath, newMaxValue); err != nil {
+		log.Fatalf("Error setting kernel.pty.max: %v", err)
+	} else {
+		fmt.Printf("Successfully set kernel.pty.max to %s\n", newMaxValue)
+	}
+
+	// Modify kernel.pty.reserve
+	if err := SetSysctlValue(ptyReservePath, newReserveValue); err != nil {
+		log.Fatalf("Error setting kernel.pty.reserve: %v", err)
+	} else {
+		fmt.Printf("Successfully set kernel.pty.reserve to %s\n", newReserveValue)
+	}
+}
+
 func PrepareRootfs(dockerImageName string) {
 	prepareScriptPath := path.Join(WorkDir, "scripts", "prepare_rootfs.sh")
 	fmt.Printf("dockerImageName: %s\n", dockerImageName)
@@ -123,6 +160,7 @@ func ConfigEnvs(serverID int, operation string, disableIpv6 int) error {
 	SetLocalPhyIntf(server.PhyIntf)
 	SetEnvPaths(server.WorkDir, server.DockerImageName)
 	SetDisableIpv6(disableIpv6)
+	SetKernelPtySysctl()
 	PrepareRootfs(server.DockerImageName)
 	return nil
 }
