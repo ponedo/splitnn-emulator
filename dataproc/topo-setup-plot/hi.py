@@ -1,0 +1,97 @@
+import argparse
+from itertools import product
+from input_data import *
+from output_data import *
+from plot_utils import *
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="Process results of a group of tests.")
+parser.add_argument("test_results_dir", type=str, help="Path to results of a group of tests.")
+parser.add_argument("output_dir", type=str, help="Directory to store results.")
+parser.add_argument('--overwrite', dest='overwrite', action='store_true', help="Overwrite existing figures.")
+args = parser.parse_args()
+
+###################### Plot options ######################
+# Plottable figure types
+valid_options = [
+    't', 'b', 'a', 'd', 'N', 'l'
+]
+valid_x_values = [
+    'node_num', 'link_num', 'b'
+]
+valid_y_values = [
+    'setup_time', 'clean_time'
+]
+
+# Set how to process results
+curve_options = [
+    (),
+    ("t",),
+    ("b",),
+    ("a",),
+    ("t", "b"),
+    ("t", "a"),
+    ("b", "a"),
+    ("t", "b", "a"),
+]
+x_value_types = [
+    'node_num',
+    'link_num',
+    # 'b',
+]
+y_value_types = [
+    'node_setup_time',
+    'link_setup_time',
+    'setup_time',
+    'clean_time',
+]
+
+
+###################### Main ######################
+
+if __name__ == "__main__":
+    # Prepare output dir
+    if os.path.isfile(args.output_dir):
+        print(f"{args.output_dir} already exists as an file!")
+        exit(1)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir, exist_ok=True)
+
+    # Read raw results from test_results_dir.
+    # Then, store options, topo info, and test result data of all tests in a DataFrame
+    all_data_df = get_all_data(
+        args.test_results_dir, valid_options, x_value_types, y_value_types)
+    
+    # For each curve option key, a set of figure suites are generated
+    # A figure suite corresponds to a set of fixed options
+    # A figure suite contains a series of figures
+    # Each figure adopts a (x_value_type, y_value_type) pair, and contains a set of curves
+    # Each curve corresponds to a set of curve_options value
+
+    # For each curve option tuple, how many option-specific figure-suite to draw? Combination of distinct fixed option values!
+    for curve_option_keys in curve_options:
+        # Create a directory for current figure-suite-set
+        figure_suite_set_dir = os.path.join(
+            args.output_dir, get_figure_suite_set_dirname(curve_option_keys))
+        os.makedirs(figure_suite_set_dir, exist_ok=True)
+        
+        # For each curve option tuple, options that are not curve options are fixed options.
+        fixed_option_keys = list(set(valid_options) - set(curve_option_keys))
+
+        # Group by fixed options. Each group corresponds to a "figure-suite"
+        suite_groups = all_data_df.groupby(fixed_option_keys)
+        for fixed_option_values, figure_suite_df in suite_groups:
+            fixed_options = dict(zip(fixed_option_keys, fixed_option_values))
+            
+            # Create a directory for current figure-suite
+            figure_suite_dir = os.path.join(
+                figure_suite_set_dir, get_figure_suite_dirname(fixed_options))
+            os.makedirs(figure_suite_dir, exist_ok=True)
+
+            # Group by (x_value_type, y_value_type). Each group corresponds to a figure
+            for x_value_type, y_value_type in product(x_value_types, y_value_types):
+                plot_one_figure(
+                    figure_suite_df, fixed_options, curve_options,
+                    x_value_type, y_value_type,
+                    figure_suite_dir, args.overwrite
+                )
