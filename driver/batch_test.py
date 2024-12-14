@@ -36,6 +36,9 @@ const_options = {
 var_options = {
     # Topologies
     "t": [
+        ["isolated", "3600"],
+        ["grid", "60", "60"],
+
         # ["grid", "10", "10"],
         # ["grid", "20", "20"],
         # ["grid", "30", "30"],
@@ -79,19 +82,19 @@ var_options = {
 
     "b": [
         1,
-        5,
-        10,
-        50,
-        100,
+        # 5,
+        # 10,
+        # 50,
+        # 100,
     ],
 
     "a": [
-        "naive",
+        # "naive",
         "dynamic",
     ],
 
     "d": [
-        0,
+        # 0,
         1
     ],
 
