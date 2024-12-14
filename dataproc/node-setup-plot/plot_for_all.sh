@@ -4,5 +4,5 @@ test_group_results_dir=$1
 all_dirs=$(find $test_group_results_dir -type d -name "cctr_log")
 
 for d in $all_dirs; do
-    ./plot.sh $d
+    ${WORK_DIR}/plot.sh $d
 done

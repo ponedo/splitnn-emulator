@@ -15,5 +15,6 @@ infra/tmp/topo/*.txt
 run.log
 kill.log
 pid.txt
+/results
 /solve.py
 __pycache__/

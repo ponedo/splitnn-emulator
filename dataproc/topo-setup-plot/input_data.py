@@ -31,12 +31,18 @@ def parse_test_opts(test_dirname, valid_options):
 
 def get_one_test_topo_info(opts):
     topo_name = opts['t']
-    splited_topo_value = topo_name.strip().split()
+    splited_topo_value = topo_name.strip().split('_')
     topo_type = splited_topo_value[0]
-    topo_args = splited_topo_value[1:]
+    topo_args = []
+    for ele in splited_topo_value[1:]:
+        try:
+            topo_arg = int(ele)
+        except ValueError:
+            topo_arg = ele
+        topo_args.append(topo_arg)
     topo_info = {
-        "node_num": topo_funcs[topo_type]["get_node_num"](topo_args),
-        "link_num": topo_funcs[topo_type]["get_link_num"](topo_args),
+        "node_num": topo_funcs[topo_type]["get_node_num"](*topo_args),
+        "link_num": topo_funcs[topo_type]["get_link_num"](*topo_args),
         "t": topo_type,
         "topo_name": topo_name,
     }
@@ -88,7 +94,7 @@ def get_one_test_results(test_dirpath):
 
 
 def get_one_test_topo_info_and_results(
-        test_dirpath, opts, y_value_types):
+        test_dirpath, opts):
     topo_and_results = {}
 
     # Get topo info
@@ -97,24 +103,28 @@ def get_one_test_topo_info_and_results(
 
     # Get results
     test_results = get_one_test_results(test_dirpath)
-    topo_and_results.update(test_results, y_value_types)
+    topo_and_results.update(test_results)
 
     return topo_and_results
 
 
 def get_all_data(test_results_dir, valid_options, x_value_types, y_value_types):
     columns = valid_options + x_value_types + y_value_types
-    all_data_df = pd.DataFrame(columns=columns)
+    rows = []
 
     # Scan test_results_dir
     test_dirnames = os.listdir(test_results_dir)
     for test_dirname in test_dirnames:
+        if test_dirname == "server_config.json":
+            continue
         opts = parse_test_opts(test_dirname, valid_options)
         row = deepcopy(opts)
         topo_and_results = get_one_test_topo_info_and_results(
-            os.path.join(test_results_dir, test_dirname), opts, y_value_types)
+            os.path.join(test_results_dir, test_dirname), opts)
         row.update(topo_and_results)
-        all_data_df = all_data_df.append(row, ignore_index=True)
+        rows.append(row)
+
+    all_data_df = pd.DataFrame(rows)
 
     return all_data_df
     
