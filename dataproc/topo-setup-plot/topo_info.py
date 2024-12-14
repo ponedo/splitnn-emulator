@@ -1,3 +1,9 @@
+def get_isolated_node_num(n):
+    return n
+
+def get_isolated_link_num(n):
+    return 0 
+
 def get_chain_node_num(n):
     return n
 
@@ -41,6 +47,10 @@ def get_clos_link_num(k):
     return link_num
 
 topo_funcs = {
+    "isolated": {
+        "get_node_num": get_isolated_node_num,
+        "get_link_num": get_isolated_link_num,
+    },
     "chain": {
         "get_node_num": get_chain_node_num,
         "get_link_num": get_chain_link_num,
