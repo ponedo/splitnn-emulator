@@ -9,10 +9,13 @@ all: build
 # Build target
 build:
 	@echo "Building the project..."
-	@mkdir -p $(BIN_DIR)
-	@cd $(SRC_DIR); /usr/local/go/bin/go build -o ../$(BIN_DIR)/$(BINARY_NAME) ./
-	@echo "Building cctr..."
+	@mkdir -p $(BIN_DIR) $(LIB_DIR)
+	@echo "Building ctr..."
 	@gcc -O2 cctr.c -o $(BIN_DIR)/cctr
+	@gcc -O2 goctr.c -o $(BIN_DIR)/goctr
+	@echo "Building go program..."
+	@cd $(SRC_DIR); /usr/local/go/bin/go build -o ../$(BIN_DIR)/$(BINARY_NAME) ./
+# @gcc -O2 goctr.c -shared -o $(SRC_DIR)/network/libgoctr.so -fPIC
 
 # Clean target to remove binaries
 clean:

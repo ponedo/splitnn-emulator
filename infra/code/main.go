@@ -211,6 +211,8 @@ func main() {
 	switch args.NodeManagerType {
 	case "cctr":
 		nodeManager = &network.CctrNodeManager{}
+	case "goctr":
+		nodeManager = &network.GoctrNodeManager{}
 	default:
 		fmt.Printf("Invalid node manager: %v.\n", args.NodeManagerType)
 		return
@@ -240,7 +242,7 @@ func main() {
 	fmt.Printf("Network operation time: %.2fs\n", end.Sub(start).Seconds())
 
 	/* Archive node runtime logs */
-	err = network.ArchiveCctrLog(args.Operation,
+	err = network.ArchiveCtrLog(args.Operation,
 		graph, nodeOrder, edgeOrder)
 	if err != nil {
 		fmt.Printf("ArchiveLog error: %v.\n", err)

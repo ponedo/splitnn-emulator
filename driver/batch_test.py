@@ -23,7 +23,7 @@ REMOTE_RESULT_PATHS = [
     ("file", "tmp/setup_log.txt"),
     ("file", "tmp/clean_log.txt"),
     ("file", "tmp/link_log.txt"),
-    ("dir", "tmp/cctr_log"),
+    ("dir", "tmp/ctr_log"),
     ("dir", "tmp/kern_func"),
 ]
 
@@ -99,7 +99,8 @@ var_options = {
     ],
 
     "N": [
-        "cctr"
+        # "cctr",
+        "goctr"
     ],
 
     "l": [

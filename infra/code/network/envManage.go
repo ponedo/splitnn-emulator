@@ -38,7 +38,7 @@ var (
 	TmpDir              string
 	BinDir              string
 	CctrBinPath         string
-	CctrLogPath         string
+	CtrLogPath          string
 	LinkLogPath         string
 	LinkLogFile         *os.File
 	KernFuncToolRelPath string
@@ -78,7 +78,7 @@ func SetEnvPaths(workDir string, dockerImageName string) {
 	TmpDir = path.Join(WorkDir, "tmp")
 	BinDir = path.Join(WorkDir, "bin")
 	CctrBinPath = path.Join(BinDir, "cctr")
-	CctrLogPath = path.Join(TmpDir, "cctr_log")
+	CtrLogPath = path.Join(TmpDir, "ctr_log")
 	LinkLogPath = path.Join(TmpDir, "link_log.txt")
 	KernFuncToolRelPath = path.Join("scripts", "monitor_kern_func.sh")
 	KernFuncLogDir = path.Join(TmpDir, "kern_func")
@@ -175,23 +175,25 @@ func StartMonitor(serverID int, operation string) error {
 	}
 
 	/* Start monitoring kernel functions */
-	if operation == "setup" {
-		kernFuncs := ServerList[serverID].KernFuncsToMonitor
-		for _, funcEntry := range kernFuncs {
-			comm := funcEntry[0]
-			kernFunc := funcEntry[1]
-			outputFileName := fmt.Sprintf("%s--%s.txt", comm, kernFunc)
-			outputFilePath := path.Join(KernFuncLogDir, outputFileName)
-			monitorCmd := exec.Command(KernFuncToolRelPath, comm, kernFunc, outputFilePath)
-
-			//start monitorcmd
-			if err := monitorCmd.Start(); err != nil {
-				return fmt.Errorf("error starting bpftrace: %v", err)
-			}
-			fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
-
-			KernFuncMnCmds = append(KernFuncMnCmds, monitorCmd)
+	kernFuncs := ServerList[serverID].KernFuncsToMonitor
+	for _, funcEntry := range kernFuncs {
+		op := funcEntry[0]
+		if op != operation {
+			continue
 		}
+		comm := funcEntry[1]
+		kernFunc := funcEntry[2]
+		outputFileName := fmt.Sprintf("%s--%s.txt", comm, kernFunc)
+		outputFilePath := path.Join(KernFuncLogDir, outputFileName)
+		monitorCmd := exec.Command(KernFuncToolRelPath, comm, kernFunc, outputFilePath)
+
+		//start monitorcmd
+		if err := monitorCmd.Start(); err != nil {
+			return fmt.Errorf("error starting bpftrace: %v", err)
+		}
+		fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
+
+		KernFuncMnCmds = append(KernFuncMnCmds, monitorCmd)
 	}
 	return nil
 }
@@ -214,11 +216,11 @@ func StopMonitor(operation string) {
 	}
 }
 
-func ArchiveCctrLog(operation string,
+func ArchiveCtrLog(operation string,
 	g *algo.Graph, nodeOrder []int, edgeOrder [][][4]int) error {
 	var srcLogName string
 	var err error
-	archiveDirPath := CctrLogPath
+	archiveDirPath := CtrLogPath
 
 	if operation == "setup" {
 		srcLogName = "run.log"

@@ -13,7 +13,8 @@ OUTPUT_FILE=$3
 # Generate an ad-hoc bpftrace script
 BPFTRACE_SCRIPT=$(mktemp /tmp/monitor_XXXX.bt)
 
-cat << EOF > $BPFTRACE_SCRIPT
+if [ -n "$COMM"  ]; then
+    cat << EOF > $BPFTRACE_SCRIPT
 #!/usr/bin/env bpftrace
 
 BEGIN
@@ -40,6 +41,36 @@ END
     printf("Stopped monitoring kernel function '%s' for process '%s'.\n", "$FUNCTION", "$COMM");
 }
 EOF
+
+else
+
+    cat << EOF > $BPFTRACE_SCRIPT
+#!/usr/bin/env bpftrace
+
+BEGIN
+{
+    printf("Monitoring kernel function '%s' for process '%s'.\n", "$FUNCTION", "$COMM");
+}
+
+kprobe:$FUNCTION
+{
+    @start[tid] = nsecs;
+}
+
+kretprobe:$FUNCTION
+{
+    \$duration = nsecs - @start[tid];
+    printf("%ld\n", \$duration);
+    delete(@start[tid]);
+}
+
+END
+{
+    printf("Stopped monitoring kernel function '%s' for process '%s'.\n", "$FUNCTION", "$COMM");
+}
+EOF
+
+fi
 
 # Run the bpftrace script and redirect its output
 mkdir -p $(dirname $OUTPUT_FILE)

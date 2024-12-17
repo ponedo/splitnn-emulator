@@ -1,5 +1,5 @@
 Runtime logs include:
-cctr_log
+ctr_log (cctr_log)
 kern_func
 setup_log.txt
 clean_log.txt
