@@ -36,6 +36,7 @@ def plot_one_figure(
         output_dir, output_filename_prefix + ".png")
     if os.path.exists(output_filepath) and not overwrite:
         print(f"Figure already exists: {output_filepath}")
+        return
 
     # Sort the dataframe first
     figure_df = figure_df.sort_values(by=['t', x_value_type])
@@ -45,6 +46,7 @@ def plot_one_figure(
 
     # Iterate through unique curves
     if len(curve_option_keys) == 0:
+        curve_options = {}
         curve_df = figure_df
         plot_one_curve(
             curve_df, None,
@@ -87,7 +89,8 @@ def plot_one_figure(
     plt.xlabel(x_value_type)
     plt.ylabel(y_value_type)
     plt.title(title)
-    plt.legend()
+    if curve_options:
+        plt.legend()
     plt.grid()
 
     # Save figure
