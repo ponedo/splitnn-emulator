@@ -52,22 +52,13 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 	}
 	hostName := nodeName
 	pidFilePath := path.Join(baseDir, "pid.txt")
-	pidFileArg := "--pid-file=" + pidFilePath
-
-	// Create the runlog file
 	runLogFilePath := path.Join(baseDir, "run.log")
-	runLogFile, err := os.Create(runLogFilePath)
-	if err != nil {
-		fmt.Printf("Error creating file: %s\n", err)
-		return err
-	}
-	defer runLogFile.Close() // Ensure the file is closed after the program finishes
+	pidFileArg := "--pid-file=" + pidFilePath
+	logFileArg := "--log-file=" + runLogFilePath
 
 	// Setup command
 	SetupNodeCommand := exec.Command(
-		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v")
-	SetupNodeCommand.Stdout = runLogFile
-	SetupNodeCommand.Stderr = runLogFile
+		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg)
 	SetupNodeCommand.Run()
 
 	// Cache netns handle of the node
@@ -108,17 +99,10 @@ func (nm *CctrNodeManager) CleanNode(nodeId int) error {
 
 	// Create the kill log file
 	killLogFilePath := path.Join(baseDir, "kill.log")
-	killLogFile, err := os.Create(killLogFilePath)
-	if err != nil {
-		fmt.Printf("Error creating file: %s\n", err)
-		return err
-	}
-	defer killLogFile.Close() // Ensure the file is closed after the program finishes
+	logFileArg := "--log-file=" + killLogFilePath
 
 	KillNodeCommand := exec.Command(
-		CctrBinPath, "kill", strconv.Itoa(pid), "-v")
-	KillNodeCommand.Stdout = killLogFile
-	KillNodeCommand.Stderr = killLogFile
+		CctrBinPath, "kill", strconv.Itoa(pid), "-v", logFileArg)
 	KillNodeCommand.Run()
 	return nil
 }
