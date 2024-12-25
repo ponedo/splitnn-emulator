@@ -29,28 +29,38 @@ int verbose_mode = 0;
 #define VERBOSE_OUTPUT(fmt, ...) \
     do { \
         if (verbose_mode) { \
-            fprintf(stdout, fmt, ##__VA_ARGS__); \
-            fflush(stdout); /* Ensure output is flushed immediately */ \
+            fprintf(stderr, fmt, ##__VA_ARGS__); \
+            fflush(stderr); /* Ensure output is flushed immediately */ \
         } \
     } while (0)
 
 
+static void verbose_output_ts(const char *ts_name) {
+    struct timespec ts;
+    uint64_t ts_value;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts); // end_time
+    ts_value = ts.tv_sec * 1e9 + ts.tv_nsec;
+    VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
+}
+
+
 void redirect_stdout_stderr(const char *log_file_path) {
-    // Redirect stdout to the file (overwrite mode)
-    if (freopen(log_file_path, "w", stdout) == NULL) {
-        fprintf(stdout, "Error: Could not redirect stdout to %s.\n", log_file_path);
+    // Redirect stderr to the file (overwrite mode)
+    if (freopen(log_file_path, "w", stderr) == NULL) {
+        fprintf(stderr, "Error: Could not redirect stderr to %s.\n", log_file_path);
     }
     if (freopen(log_file_path, "w", stderr) == NULL) {
-        fprintf(stdout, "Error: Could not redirect stderr to %s.\n", log_file_path);
+        fprintf(stderr, "Error: Could not redirect stderr to %s.\n", log_file_path);
     }
 }
 
 
 void print_usage(const char *prog_name) {
-    fprintf(stdout, "Usage:\n");
-    fprintf(stdout, "  %s run <base_dir> <hostname> <img_rootfs_dir> [--netns=<netns_path>] [--pid-file=<pid_file_path>] [-v]\n", prog_name);
-    fprintf(stdout, "  %s exec <pid> <cmdline...>\n", prog_name);
-    fprintf(stdout, "  %s kill <pid>\n", prog_name);
+    fprintf(stderr, "Usage:\n");
+    fprintf(stderr, "  %s run <base_dir> <hostname> <img_rootfs_dir> [--netns=<netns_path>] [--pid-file=<pid_file_path>] [-v]\n", prog_name);
+    fprintf(stderr, "  %s exec <pid> <cmdline...>\n", prog_name);
+    fprintf(stderr, "  %s kill <pid>\n", prog_name);
     exit(EXIT_FAILURE);
 }
 
@@ -67,13 +77,13 @@ int write_pid_to_file(const char *pid_file_path, int pid) {
     // Open the file for writing, overwrite if it exists
     FILE *file = fopen(pid_file_path, "w");
     if (!file) {
-        fprintf(stdout, "Failed to open PID file\n");
+        fprintf(stderr, "Failed to open PID file\n");
         return -1;
     }
 
     // Write the PID to the file
     if (fprintf(file, "%d\n", pid) < 0) {
-        fprintf(stdout, "Failed to write to PID file.\n");
+        fprintf(stderr, "Failed to write to PID file.\n");
         fclose(file);
         return -1;
     }
@@ -98,9 +108,6 @@ static int container_init(
     int flags = fcntl(err_fd, F_GETFD);
     flags |= FD_CLOEXEC;
     fcntl(err_fd, F_SETFD, flags);
-    struct timespec start_time, end_time;
-
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
 
     if(mount("none", "/", NULL, MS_PRIVATE|MS_REC, NULL) != 0) {
         return child_err("mount rprivate / failed: ", err_fd);
@@ -131,14 +138,7 @@ static int container_init(
     if(mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
         return child_err("mount /proc failed: ", err_fd);
     }
-
-    uint64_t exec_time_ns;
-    clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-    exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                            (end_time.tv_nsec - start_time.tv_nsec);
-    VERBOSE_OUTPUT("rootfs time: %lu ns\n", exec_time_ns);
-
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
+    verbose_output_ts("rootfs_time");
 
     // new session, detach to become a daemon process 
     if(setsid() < 0) {
@@ -159,17 +159,18 @@ static int container_init(
     || putenv("PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")) {
         return child_err("putenv failed: ", err_fd);
     }
-
-    clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-    exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                            (end_time.tv_nsec - start_time.tv_nsec);
-    VERBOSE_OUTPUT("miscellaneous time: %lu ns\n", exec_time_ns);
+    verbose_output_ts("setenv_time");
 
     close(STDERR_FILENO);
 
     // sleep infinity, need a process with low resource requirement
     execlp("sleep", "sleep", "inf", NULL);
+    // close(err_fd);
+    // while (1) {
+    //     pause(); // Blocks the process indefinitely
+    // }
     // should not be executed here
+    verbose_output_ts("execlp_time");
     return child_err("execlp failed: ", err_fd);
 }
 
@@ -187,7 +188,7 @@ int container_enter(pid_t ctr_pid, char *const* argv, int err_fd) {
     if(pid_fd < 0)
         return child_err("failed to pidfd_open: ", err_fd);
 
-    fprintf(stdout, "pid_fd: %d\n", pid_fd);
+    fprintf(stderr, "pid_fd: %d\n", pid_fd);
     int ret = setns(pid_fd, NS_ALL);
     close(pid_fd);
     if(ret != 0)
@@ -213,9 +214,6 @@ int container_run_inner(
     const char* NEWROOT = "merged";
     int n;
     int netns_fd = -1;
-    struct timespec start_time, end_time;
-
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
 
     if(access(base_dir, F_OK) && mkdir(base_dir, MODE)) return -1;
 
@@ -229,18 +227,13 @@ int container_run_inner(
     }
     if(close(dir_fd) != 0) return -1;
 
-    clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-    uint64_t exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                            (end_time.tv_nsec - start_time.tv_nsec);
-    VERBOSE_OUTPUT("mkdir time: %lu ns\n", exec_time_ns);
-
     char overlay_opt[PATH_MAX * 3];
     char new_root[PATH_MAX];
     snprintf(overlay_opt, sizeof(overlay_opt),
         "lowerdir=%s,upperdir=%s/%s,workdir=%s/%s",
         img_rootfs_dir, base_dir, UPPER_DIR, base_dir, WORK_DIR);
     snprintf(new_root, sizeof(new_root), "%s/%s", base_dir, NEWROOT);
-    
+
     int err_fds[2], event_fd;
     if(pipe(err_fds) != 0 || (event_fd = eventfd(0, 0)) < 0) return -1;
 
@@ -252,19 +245,14 @@ int container_run_inner(
             return -1;
         }
     }
-
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
+    verbose_output_ts("overlay_time");
 
     pid_t pid = fork();
     if (pid < 0) {
         close(err_fds[0]), close(err_fds[1]), close(event_fd);
         return -1;  
     } else if(pid == 0) {
-        clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-        uint64_t exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                                (end_time.tv_nsec - start_time.tv_nsec);
-        VERBOSE_OUTPUT("fork 1 time: %lu ns\n", exec_time_ns);
-
+        verbose_output_ts("fork1_time");
         close(err_fds[0]);
         if (netns_path) {
             // If a network namespace is provided, unshare all namespaces except network
@@ -279,34 +267,20 @@ int container_run_inner(
                 exit(child_err("setns failed: ", err_fds[1]));
             }
             close(netns_fd);
-
         } else {
-            clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
-
             if(unshare(NS_ALL) != 0) {
                 close(event_fd);
                 exit(child_err("unshare failed: ", err_fds[1]));
             }
-
-            clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-            uint64_t exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                                    (end_time.tv_nsec - start_time.tv_nsec);
-            VERBOSE_OUTPUT("unshare time: %lu ns\n", exec_time_ns);
         }
-
-        clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
+        verbose_output_ts("unshare_time");
 
         pid = fork();
         if(pid < 0) {
             close(event_fd);
             exit(child_err("second fork failed: ", err_fds[1]));
         } else if(pid == 0) {
-
-            clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-            uint64_t exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                                    (end_time.tv_nsec - start_time.tv_nsec);
-            VERBOSE_OUTPUT("fork 2 time: %lu ns\n", exec_time_ns);
-
+            verbose_output_ts("fork2_time");
             close(event_fd);
             exit(container_init(new_root, overlay_opt, hostname, err_fds[1]));
             // should not execute here
@@ -315,6 +289,7 @@ int container_run_inner(
         uint64_t pid_u64 = pid;
         n = write(event_fd, &pid_u64, sizeof(pid_u64));
         close(event_fd);
+        verbose_output_ts("write_pid_time");
         exit(0);
         // should not execute here
     }
@@ -323,6 +298,7 @@ int container_run_inner(
     if (netns_fd >= 0) close(netns_fd);
 
     ssize_t len = read(err_fds[0], chd_err, max_len);
+    verbose_output_ts("read_err_time");
     // anyway, child should exit immediately 
     waitpid(pid, NULL, 0);
     if(len > 0) {
@@ -330,6 +306,7 @@ int container_run_inner(
         close(err_fds[0]), close(event_fd);
         return 0;
     }
+    verbose_output_ts("wait_child_time");
 
     // receive grandchild pid from child
     uint64_t pid_u64;
@@ -338,6 +315,7 @@ int container_run_inner(
     else
         pid = -1;
 
+    verbose_output_ts("read_pid_time");
     close(err_fds[0]), close(event_fd);
     return pid;
 }
@@ -383,27 +361,21 @@ int container_run(
     const char *netns_path) {
     char chd_err[256];
     int pid;
-    struct timespec start_time, end_time;
 
     if ((base_dir == NULL) || (hostname == NULL) || (img_rootfs_dir == NULL)) {
-        fprintf(stdout, "Empty base_dir or hostname\n");
+        fprintf(stderr, "Empty base_dir or hostname\n");
         return -1;
     }
-    
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
+
     pid = container_run_inner(
         base_dir, hostname, img_rootfs_dir, netns_path, chd_err, sizeof(chd_err) - 1);
     if (pid < 0) {
-        fprintf(stdout, "Parent error: %s\n", chd_err);
+        fprintf(stderr, "Parent error: %s\n", chd_err);
         return -1;
     } else if (pid == 0) {
-        fprintf(stdout, "Child error: %s\n", chd_err);
+        fprintf(stderr, "Child error: %s\n", chd_err);
         return -1;
     } else { // normal case
-        clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-        uint64_t exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                                (end_time.tv_nsec - start_time.tv_nsec);
-        VERBOSE_OUTPUT("total run time: %lu ns\n", exec_time_ns);
         return pid;
     }
 }
@@ -418,14 +390,14 @@ int container_exec(int pid, char **cmdline) {
 
     ret = container_exec_inner(pid, argv, chd_err, sizeof(chd_err) - 1);
     if(ret < 0) {
-        fprintf(stdout, "Parent error: %s\n", chd_err);
+        fprintf(stderr, "Parent error: %s\n", chd_err);
     } else if (ret == 0) {
-        fprintf(stdout, "Child error: %s\n", chd_err);
+        fprintf(stderr, "Child error: %s\n", chd_err);
     } else {
         int status;
         waitpid(ret, &status, 0);
         if(!WIFEXITED(status)) {
-            fprintf(stdout, "Child error: %s\n", chd_err);
+            fprintf(stderr, "Child error: %s\n", chd_err);
         } else {
             // free(argv);
             return WEXITSTATUS(status);
@@ -438,12 +410,12 @@ int container_exec(int pid, char **cmdline) {
 int container_kill(int pid) {
     char chd_err[256];
     if (pid <= 0) {
-        fprintf(stdout, "Error: Invalid PID '%d'.\n", pid);
+        fprintf(stderr, "Error: Invalid PID '%d'.\n", pid);
         return -1;
     }
 
     if (kill(pid, SIGKILL) != 0) {
-        fprintf(stdout, "Error: Invalid PID '%d'.\n", pid);
+        fprintf(stderr, "Error: Invalid PID '%d'.\n", pid);
         return -1;
     }
     return 0;
@@ -459,8 +431,6 @@ int goctr_run(int argc, char *argv[]) {
     const char *pid_file_path = NULL;
     const char *log_file_path = NULL;
     int pid;
-    struct timespec start_time, end_time;
-    uint64_t exec_time_ns;
 
     for (int i = 0; i < argc; i++) {
         if (strncmp(argv[i], "--netns=", 8) == 0) {
@@ -479,14 +449,16 @@ int goctr_run(int argc, char *argv[]) {
         } else if (!img_rootfs_dir) {
             img_rootfs_dir = argv[i];
         } else {
-            fprintf(stdout, "Error: Too many arguments for 'run' operation.\n");
+            fprintf(stderr, "Error: Too many arguments for 'run' operation.\n");
         }
     }
 
+    verbose_output_ts("run_start_time");
     pid = container_run(base_dir, hostname, img_rootfs_dir, netns_path);
     if (pid_file_path != NULL) {
         write_pid_to_file(pid_file_path, pid);
     }
+    verbose_output_ts("run_total_time");
     return pid;
 }
 
@@ -495,7 +467,7 @@ int goctr_exec(int argc, char *argv[]) {
 
     // "exec" requires at least 2 additional arguments
     if (argc < 0) {
-        fprintf(stdout, "Error: 'exec' operation requires at least 2 arguments: <pid> <cmdline...>\n");
+        fprintf(stderr, "Error: 'exec' operation requires at least 2 arguments: <pid> <cmdline...>\n");
         return -1;
     }
 
@@ -503,7 +475,7 @@ int goctr_exec(int argc, char *argv[]) {
     char *endptr;
     pid_t pid = strtol(argv[0], &endptr, 10);
     if (*endptr != '\0') {
-        fprintf(stdout, "Error: 'pid' must be an integer.\n");
+        fprintf(stderr, "Error: 'pid' must be an integer.\n");
         print_usage(argv[0]);
     }
 
@@ -511,15 +483,15 @@ int goctr_exec(int argc, char *argv[]) {
     char **cmdline = &argv[1];
     int cmdline_len = argc - 1;
     if (cmdline_len == 0) {
-        fprintf(stdout, "Error: 'cmdline' cannot be empty.\n");
+        fprintf(stderr, "Error: 'cmdline' cannot be empty.\n");
         return -1;
     }
 
-    fprintf(stdout, "Operation: exec\n");
-    fprintf(stdout, "PID: %d\n", pid);
-    fprintf(stdout, "Command Line:\n");
+    fprintf(stderr, "Operation: exec\n");
+    fprintf(stderr, "PID: %d\n", pid);
+    fprintf(stderr, "Command Line:\n");
     for (int i = 0; i < cmdline_len; i++) {
-        fprintf(stdout, "  %s\n", cmdline[i]);
+        fprintf(stderr, "  %s\n", cmdline[i]);
     }
 
     status = container_exec(pid, cmdline);
@@ -529,8 +501,6 @@ int goctr_exec(int argc, char *argv[]) {
 int goctr_kill(int argc, char *argv[]) {
     int ret, pid = 0;
     const char *log_file_path = NULL;
-    struct timespec start_time, end_time;
-    uint64_t exec_time_ns;
 
     // "kill" requires 1 additional positional argument
     for (int i = 0; i < argc; i++) {
@@ -542,27 +512,22 @@ int goctr_kill(int argc, char *argv[]) {
             log_file_path = argv[i] + 11; // Extract the pid file path
             redirect_stdout_stderr(log_file_path);
         } else {
-            fprintf(stdout, "Error: Too many arguments for 'run' operation.\n");
+            fprintf(stderr, "Error: Too many arguments for 'run' operation %s.\n", argv[i]);
         }
     }
-
-    clock_gettime(CLOCK_MONOTONIC, &start_time); // start_time
+    verbose_output_ts("kill_start_time");
     ret = container_kill(pid);
-    clock_gettime(CLOCK_MONOTONIC, &end_time); // end_time
-    exec_time_ns = (end_time.tv_sec - start_time.tv_sec) * 1e9 +
-                    (end_time.tv_nsec - start_time.tv_nsec);
-    VERBOSE_OUTPUT("kill time: %lu ns\n", exec_time_ns);
+    verbose_output_ts("kill_total_time");
+    
     return ret;
 }
 
 // ======================== Main ========================
 
 int main(int argc, char *argv[]) {
-    int ret;
-
     // Check for the minimum required arguments
     if (argc < 2) {
-        fprintf(stdout, "Error: Missing mandatory 'op' argument.\n");
+        fprintf(stderr, "Error: Missing mandatory 'op' argument.\n");
         print_usage(argv[0]);
     }
 
@@ -570,13 +535,13 @@ int main(int argc, char *argv[]) {
     const char *op = argv[1];
 
     if (strcmp(op, "run") == 0) {
-        ret = goctr_run(argc - 2, argv + 2);
+        goctr_run(argc - 2, argv + 2);
     } else if (strcmp(op, "exec") == 0) {
-        ret = goctr_exec(argc - 2, argv + 2);
+        goctr_exec(argc - 2, argv + 2);
     } else if (strcmp(op, "kill") == 0) {
-        ret = goctr_kill(argc - 2 , argv + 2);
+        goctr_kill(argc - 2 , argv + 2);
     } else {
-        fprintf(stdout, "Error: Invalid 'op' argument. Must be 'run', 'exec', or 'kill'.\n");
+        fprintf(stderr, "Error: Invalid 'op' argument. Must be 'run', 'exec', or 'kill'.\n");
         print_usage(argv[0]);
     }
 
