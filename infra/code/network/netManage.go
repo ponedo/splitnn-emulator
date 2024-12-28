@@ -58,6 +58,8 @@ func NetworkSetup(
 			tmpTime = time.Now()
 		}
 
+		// time.Sleep(1 * time.Second)
+
 		/* Setup next node and connectable links */
 		startNodeTime := time.Now()
 		ctrTime, err = nm.SetupNode(nodeId)

@@ -15,6 +15,7 @@ import (
 type NtlBrLinkManager struct {
 	curBackBoneNum int
 	curlinkNum     int
+	curBackBoneNs  netns.NsHandle
 	hostNetns      netns.NsHandle
 	nm             NodeManager
 }
@@ -25,6 +26,7 @@ func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 	lm.curBackBoneNum = 0
 	lm.curlinkNum = 0
 	lm.nm = nm
+	lm.curBackBoneNs = -1
 	lm.hostNetns, err = netns.Get()
 	if err != nil {
 		return err
@@ -33,6 +35,7 @@ func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 }
 
 func (lm *NtlBrLinkManager) Delete() error {
+	lm.hostNetns.Close()
 	return nil
 }
 
@@ -58,6 +61,11 @@ func (lm *NtlBrLinkManager) SetupAndEnterBbNs() error {
 			return err
 		}
 	}
+
+	if lm.curBackBoneNs != -1 {
+		lm.curBackBoneNs.Close()
+	}
+	lm.curBackBoneNs = backboneNsHandle
 	return nil
 }
 
@@ -120,18 +128,17 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	var brName string
 
 	/* Prepare network namespace handles */
-	backboneNs, err = netns.Get() // this should be backbone namespace
-	if err != nil {
-		return fmt.Errorf("failed to netns.Get: %s", err)
-	}
+	backboneNs = lm.curBackBoneNs
 	nodeiNetNs, err = lm.nm.GetNodeNetNs(nodeIdi)
 	if err != nil {
 		return fmt.Errorf("failed to GetNodeNetNs: %s", err)
 	}
+	defer nodeiNetNs.Close()
 	nodejNetNs, err = lm.nm.GetNodeNetNs(nodeIdj)
 	if err != nil {
 		return fmt.Errorf("failed to GetNodeNetNs: %s", err)
 	}
+	defer nodejNetNs.Close()
 
 	/* Prepare other data structure */
 	brName = "br-" + strconv.Itoa(lm.curlinkNum)
@@ -222,14 +229,12 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	var backboneNs, nodeiNetNs netns.NsHandle
 
 	/* Prepare network namespace handles */
-	backboneNs, err = netns.Get()
-	if err != nil {
-		return fmt.Errorf("failed to netns.Get: %s", err)
-	}
+	backboneNs = lm.curBackBoneNs
 	nodeiNetNs, err = lm.nm.GetNodeNetNs(nodeIdi)
 	if err != nil {
 		return fmt.Errorf("failed to GetNodeNetNs: %s", err)
 	}
+	defer nodeiNetNs.Close()
 
 	/* Create Vxlan */
 	brName := "br-" + strconv.Itoa(lm.curlinkNum)

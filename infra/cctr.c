@@ -10,6 +10,7 @@
 #include <sys/wait.h>
 #include <sys/eventfd.h>
 #include <sys/stat.h>
+#include <sys/resource.h>
 
 #include <time.h>
 #include <limits.h>
@@ -38,10 +39,53 @@ int verbose_mode = 0;
 static void verbose_output_ts(const char *ts_name) {
     struct timespec ts;
     uint64_t ts_value;
+    if (verbose_mode) {
+        clock_gettime(CLOCK_MONOTONIC, &ts); // end_time
+        ts_value = ts.tv_sec * 1e9 + ts.tv_nsec;
+        VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
+    }
+}
 
-    clock_gettime(CLOCK_MONOTONIC, &ts); // end_time
-    ts_value = ts.tv_sec * 1e9 + ts.tv_nsec;
-    VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
+
+void set_realtime_priority(int priority) {
+    struct sched_param param;
+    param.sched_priority = priority;
+
+    if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+        perror("sched_setscheduler failed");
+    } else {
+        printf("Successfully set real-time priority\n");
+    }
+}
+
+
+int set_sched_and_nice(int nice_value) {
+    // Set the scheduling policy to SCHED_OTHER
+    struct sched_param param;
+    param.sched_priority = 0;  // Priority 0 for SCHED_OTHER
+    if (sched_setscheduler(0, SCHED_OTHER, &param) == -1) {
+        perror("sched_setscheduler failed");
+        return -1;
+    }
+
+    // Set the nice value
+    if (setpriority(PRIO_PROCESS, 0, nice_value) == -1) {
+        perror("setpriority failed");
+        return -1;
+    }
+
+    return 0;
+}
+
+
+void pin_to_cpu(int cpu) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+        perror("sched_setaffinity failed");
+    }
 }
 
 
@@ -531,6 +575,11 @@ void do_kill_command(int argc, char *argv[]) {
 // ======================== Main ========================
 
 int main(int argc, char *argv[]) {
+
+    pin_to_cpu(3); // Pin to CPU 3
+    // set_realtime_priority(90); // Priority between 1-99
+    set_sched_and_nice(19);
+
     // Check for the minimum required arguments
     if (argc < 2) {
         fprintf(stderr, "Error: Missing mandatory 'op' argument.\n");

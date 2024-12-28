@@ -7,9 +7,13 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"syscall"
 	"time"
 	"topo_setup_test/algo"
 	"topo_setup_test/network"
+	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 var args struct {
@@ -118,7 +122,90 @@ func redirectOutput(workDir string, operation string) {
 	os.Stderr = logFile
 }
 
+func pinToCPU(cpuID int) error {
+	var mask unix.CPUSet
+	mask.Zero()     // Clear the CPU set
+	mask.Set(cpuID) // Add the desired CPU to the set
+
+	// Apply the CPU affinity to the current thread (PID 0 means current thread)
+	err := unix.SchedSetaffinity(0, &mask)
+	if err != nil {
+		return fmt.Errorf("failed to set CPU affinity: %w", err)
+	}
+	return nil
+}
+
+func setRealtimePriority(pid int, priority int) error {
+	const (
+		SCHED_FIFO = 1 // Real-time scheduling policy
+	)
+
+	// Define the sched_param structure
+	param := struct {
+		SchedPriority int32
+	}{
+		SchedPriority: int32(priority),
+	}
+
+	// Call sched_setscheduler (syscall)
+	_, _, errno := syscall.RawSyscall(syscall.SYS_SCHED_SETSCHEDULER,
+		uintptr(pid),                    // Target PID (0 for current process)
+		uintptr(SCHED_FIFO),             // Scheduling policy
+		uintptr(unsafe.Pointer(&param)), // Pointer to sched_param
+	)
+
+	if errno != 0 {
+		return fmt.Errorf("sched_setscheduler failed: %v", errno)
+	}
+	return nil
+}
+
+// Manually define constants and types
+const (
+	SCHED_OTHER = 0 // Scheduling policy for normal processes
+)
+
+type SchedParam struct {
+	SchedPriority int32
+}
+
+// Manually define SchedSetScheduler using syscall
+func SchedSetScheduler(pid int, policy int, param *SchedParam) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_SCHED_SETSCHEDULER, uintptr(pid), uintptr(policy), uintptr(unsafe.Pointer(param)))
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
+
+func SetSchedAndNice(niceValue int) error {
+	// Set scheduling policy to SCHED_OTHER
+	param := SchedParam{SchedPriority: 0} // Priority is ignored for SCHED_OTHER
+	err := SchedSetScheduler(0, SCHED_OTHER, &param)
+	if err != nil {
+		return fmt.Errorf("sched_setscheduler failed: %v", err)
+	}
+
+	// Set the nice value
+	err = unix.Setpriority(unix.PRIO_PROCESS, 0, niceValue)
+	if err != nil {
+		return fmt.Errorf("setpriority failed: %v", err)
+	}
+
+	return nil
+}
+
 func main() {
+	if err := pinToCPU(3); err != nil {
+		log.Fatalf("Error pinning to CPU: %v", err)
+	}
+	// if err := setRealtimePriority(0, 85); err != nil {
+	// 	log.Fatalf("Error setting real-time priority: %v", err)
+	// }
+	// if err := SetSchedAndNice(19); err != nil {
+	// 	log.Fatalf("Error setting nice priority: %v", err)
+	// }
+
 	parseArgs()
 
 	var err error
@@ -140,7 +227,7 @@ func main() {
 	if err != nil {
 		goto clean
 	}
-	err = network.StartMonitor(args.ServerID, args.Operation)
+	err = network.StartMonitor(args.ServerID, args.Operation, args.NodeManagerType)
 	if err != nil {
 		goto clean
 	}

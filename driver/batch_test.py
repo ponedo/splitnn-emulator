@@ -25,6 +25,7 @@ REMOTE_RESULT_PATHS = [
     ("file", "tmp/link_log.txt"),
     ("dir", "tmp/ctr_log"),
     ("dir", "tmp/kern_func"),
+    ("dir", "tmp/cctr_time.txt"),
 ]
 
 ######################### Command options ############################
@@ -36,8 +37,11 @@ const_options = {
 var_options = {
     # Topologies
     "t": [
-        ["isolated", "3600"],
+        # ["isolated", "100"],
+        # ["grid", "100", "100"],
+        # ["isolated", "10000"],
         ["grid", "60", "60"],
+        ["isolated", "3600"],
 
         # ["grid", "10", "10"],
         # ["grid", "20", "20"],
@@ -89,8 +93,8 @@ var_options = {
     ],
 
     "a": [
-        # "naive",
         "dynamic",
+        # "naive",
     ],
 
     "d": [
@@ -99,8 +103,8 @@ var_options = {
     ],
 
     "N": [
-        # "cctr",
-        "goctr"
+        "cctr",
+        # "goctr"
     ],
 
     "l": [
@@ -332,7 +336,7 @@ if __name__ == "__main__":
         # Execute test commands
         print(setup_commands)
         execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-        time.sleep(5) # Wait for a while
+        time.sleep(10) # Wait for a while
         print(clean_commands)
         execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
 

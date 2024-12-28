@@ -30,22 +30,24 @@ type Servers struct {
 }
 
 var (
-	Operation           string
-	ServerList          []Server
-	LocalPhyIntf        string
-	LocalPhyIntfNl      netlink.Link
-	WorkDir             string
-	TmpDir              string
-	BinDir              string
-	CctrBinPath         string
-	CtrLogPath          string
-	LinkLogPath         string
-	LinkLogFile         *os.File
-	KernFuncToolRelPath string
-	KernFuncLogDir      string
-	KernFuncMnCmds      []*exec.Cmd
-	ImageRootfsPath     string
-	DisableIpv6         int
+	Operation             string
+	ServerList            []Server
+	LocalPhyIntf          string
+	LocalPhyIntfNl        netlink.Link
+	WorkDir               string
+	TmpDir                string
+	BinDir                string
+	CctrBinPath           string
+	CtrLogPath            string
+	LinkLogPath           string
+	LinkLogFile           *os.File
+	KernFuncToolRelPath   string
+	KernFuncLogDir        string
+	CctrMonitorScriptPath string
+	CctrMonitorOutputPath string
+	MonitorCmds           []*exec.Cmd
+	ImageRootfsPath       string
+	DisableIpv6           int
 )
 
 func ConfigServers(confFileName string) error {
@@ -68,144 +70,58 @@ func ConfigServers(confFileName string) error {
 	return nil
 }
 
-func SetLocalPhyIntf(value string) {
-	LocalPhyIntf = value
-	LocalPhyIntfNl, _ = netlink.LinkByName(LocalPhyIntf)
-}
-
-func SetEnvPaths(workDir string, dockerImageName string) {
-	WorkDir = workDir
-	TmpDir = path.Join(WorkDir, "tmp")
-	BinDir = path.Join(WorkDir, "bin")
-	CctrBinPath = path.Join(BinDir, "cctr")
-	CtrLogPath = path.Join(TmpDir, "ctr_log")
-	LinkLogPath = path.Join(TmpDir, "link_log.txt")
-	KernFuncToolRelPath = path.Join("scripts", "monitor_kern_func.sh")
-	KernFuncLogDir = path.Join(TmpDir, "kern_func")
-
-	splitedImageName := strings.Split(dockerImageName, ":")
-	ImageRepo := splitedImageName[0]
-	ImageTag := splitedImageName[1]
-	ImageRootfsPath = path.Join(TmpDir, "img_bundles", ImageRepo, ImageTag, "rootfs")
-}
-
-func SetDisableIpv6(disableIpv6 int) {
-	DisableIpv6 = disableIpv6
-}
-
-func SetSysctlValue(path string, value string) error {
-	file, err := os.OpenFile(path, os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open file %s: %w", path, err)
-	}
-	defer file.Close()
-
-	_, err = file.WriteString(value)
-	if err != nil {
-		return fmt.Errorf("failed to write value to file %s: %w", path, err)
-	}
-
-	return nil
-}
-
-func SetKernelPtySysctl() {
-	ptyMaxPath := "/proc/sys/kernel/pty/max"
-	ptyReservePath := "/proc/sys/kernel/pty/reserve"
-
-	// Desired values
-	newMaxValue := "262144"
-	newReserveValue := "65536"
-
-	if err := SetSysctlValue(ptyMaxPath, newMaxValue); err != nil {
-		log.Fatalf("Error setting kernel.pty.max: %v", err)
-	} else {
-		fmt.Printf("Successfully set kernel.pty.max to %s\n", newMaxValue)
-	}
-
-	// Modify kernel.pty.reserve
-	if err := SetSysctlValue(ptyReservePath, newReserveValue); err != nil {
-		log.Fatalf("Error setting kernel.pty.reserve: %v", err)
-	} else {
-		fmt.Printf("Successfully set kernel.pty.reserve to %s\n", newReserveValue)
-	}
-}
-
-func PrepareRootfs(dockerImageName string) {
-	prepareScriptPath := path.Join(WorkDir, "scripts", "prepare_rootfs.sh")
-	fmt.Printf("dockerImageName: %s\n", dockerImageName)
-	prepareCommand := exec.Command(
-		prepareScriptPath, dockerImageName)
-	prepareCommand.Stdout = os.Stdout
-	prepareCommand.Stderr = os.Stderr
-	prepareCommand.Run()
-}
-
-func OpenLinkLog() error {
-	var err error
-	LinkLogFile, err = os.OpenFile(LinkLogPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		LinkLogFile.Close()
-		return fmt.Errorf("failed to open link log file: %v", err)
-	}
-	return nil
-}
-
-func CloseLinkLog() {
-	LinkLogFile.Close()
-}
-
 func ConfigEnvs(serverID int, operation string, disableIpv6 int) error {
 	server := ServerList[serverID]
 	Operation = operation
-	SetLocalPhyIntf(server.PhyIntf)
-	SetEnvPaths(server.WorkDir, server.DockerImageName)
-	SetDisableIpv6(disableIpv6)
-	SetKernelPtySysctl()
-	PrepareRootfs(server.DockerImageName)
+	setLocalPhyIntf(server.PhyIntf)
+	setEnvPaths(server.WorkDir, server.DockerImageName)
+	setDisableIpv6(disableIpv6)
+	setKernelPtySysctl()
+	prepareRootfs(server.DockerImageName)
 	return nil
 }
 
 func CleanEnvs(operation string) {
 }
 
-func StartMonitor(serverID int, operation string) error {
+func StartMonitor(serverID int, operation string, nmManagerType string) error {
+	var err error
+
 	/* Open link setup log */
 	if operation == "setup" {
-		OpenLinkLog()
+		openLinkLog()
 	}
 
 	/* Start monitoring kernel functions */
 	kernFuncs := ServerList[serverID].KernFuncsToMonitor
 	for _, funcEntry := range kernFuncs {
-		op := funcEntry[0]
-		if op != operation {
-			continue
+		err = startMonitorKernFunc(funcEntry, operation)
+		if err != nil {
+			return err
 		}
-		comm := funcEntry[1]
-		kernFunc := funcEntry[2]
-		outputFileName := fmt.Sprintf("%s--%s.txt", comm, kernFunc)
-		outputFilePath := path.Join(KernFuncLogDir, outputFileName)
-		monitorCmd := exec.Command(KernFuncToolRelPath, comm, kernFunc, outputFilePath)
-
-		//start monitorcmd
-		if err := monitorCmd.Start(); err != nil {
-			return fmt.Errorf("error starting bpftrace: %v", err)
-		}
-		fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
-
-		KernFuncMnCmds = append(KernFuncMnCmds, monitorCmd)
 	}
+
+	/* Start monitoring cctr */
+	if operation == "setup" && nmManagerType == "cctr" {
+		err = startMonitorCctr()
+		if err != nil {
+			return err
+		}
+	}
+
+	time.Sleep(2 * time.Second)
+
 	return nil
 }
 
 func StopMonitor(operation string) {
 	/* Close link setup log */
 	if operation == "setup" {
-		CloseLinkLog()
+		closeLinkLog()
 	}
 
 	/* stop monitorcmd */
-	for _, monitorCmd := range KernFuncMnCmds {
+	for _, monitorCmd := range MonitorCmds {
 		if monitorCmd != nil && monitorCmd.Process != nil {
 			fmt.Printf("Stopping bpftrace script with PID %d\n", monitorCmd.Process.Pid)
 			if err := monitorCmd.Process.Signal(syscall.SIGTERM); err != nil {
@@ -272,6 +188,94 @@ func ArchiveCtrLog(operation string,
 	return nil
 }
 
+func setLocalPhyIntf(value string) {
+	LocalPhyIntf = value
+	LocalPhyIntfNl, _ = netlink.LinkByName(LocalPhyIntf)
+}
+
+func setEnvPaths(workDir string, dockerImageName string) {
+	WorkDir = workDir
+	TmpDir = path.Join(WorkDir, "tmp")
+	BinDir = path.Join(WorkDir, "bin")
+	CctrBinPath = path.Join(BinDir, "cctr")
+	CtrLogPath = path.Join(TmpDir, "ctr_log")
+	LinkLogPath = path.Join(TmpDir, "link_log.txt")
+	KernFuncToolRelPath = path.Join(WorkDir, "scripts", "monitor_kern_func.sh")
+	KernFuncLogDir = path.Join(TmpDir, "kern_func")
+	CctrMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cctr_time.sh")
+	CctrMonitorOutputPath = path.Join(TmpDir, "cctr_time.txt")
+
+	splitedImageName := strings.Split(dockerImageName, ":")
+	ImageRepo := splitedImageName[0]
+	ImageTag := splitedImageName[1]
+	ImageRootfsPath = path.Join(TmpDir, "img_bundles", ImageRepo, ImageTag, "rootfs")
+}
+
+func setDisableIpv6(disableIpv6 int) {
+	DisableIpv6 = disableIpv6
+}
+
+func setSysctlValue(path string, value string) error {
+	file, err := os.OpenFile(path, os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(value)
+	if err != nil {
+		return fmt.Errorf("failed to write value to file %s: %w", path, err)
+	}
+
+	return nil
+}
+
+func setKernelPtySysctl() {
+	ptyMaxPath := "/proc/sys/kernel/pty/max"
+	ptyReservePath := "/proc/sys/kernel/pty/reserve"
+
+	// Desired values
+	newMaxValue := "262144"
+	newReserveValue := "65536"
+
+	if err := setSysctlValue(ptyMaxPath, newMaxValue); err != nil {
+		log.Fatalf("Error setting kernel.pty.max: %v", err)
+	} else {
+		fmt.Printf("Successfully set kernel.pty.max to %s\n", newMaxValue)
+	}
+
+	// Modify kernel.pty.reserve
+	if err := setSysctlValue(ptyReservePath, newReserveValue); err != nil {
+		log.Fatalf("Error setting kernel.pty.reserve: %v", err)
+	} else {
+		fmt.Printf("Successfully set kernel.pty.reserve to %s\n", newReserveValue)
+	}
+}
+
+func prepareRootfs(dockerImageName string) {
+	prepareScriptPath := path.Join(WorkDir, "scripts", "prepare_rootfs.sh")
+	fmt.Printf("dockerImageName: %s\n", dockerImageName)
+	prepareCommand := exec.Command(
+		prepareScriptPath, dockerImageName)
+	prepareCommand.Stdout = os.Stdout
+	prepareCommand.Stderr = os.Stderr
+	prepareCommand.Run()
+}
+
+func openLinkLog() error {
+	var err error
+	LinkLogFile, err = os.OpenFile(LinkLogPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		LinkLogFile.Close()
+		return fmt.Errorf("failed to open link log file: %v", err)
+	}
+	return nil
+}
+
+func closeLinkLog() {
+	LinkLogFile.Close()
+}
+
 func copyFile(src, dst string) error {
 	sourceFile, err := os.Open(src)
 	if err != nil {
@@ -295,5 +299,37 @@ func copyFile(src, dst string) error {
 		return fmt.Errorf("error syncing destination file: %w", err)
 	}
 
+	return nil
+}
+
+func startMonitorKernFunc(funcEntry []string, operation string) error {
+	op := funcEntry[0]
+	if op != operation {
+		return nil
+	}
+	comm := funcEntry[1]
+	kernFunc := funcEntry[2]
+	outputFileName := fmt.Sprintf("%s--%s.txt", comm, kernFunc)
+	outputFilePath := path.Join(KernFuncLogDir, outputFileName)
+	monitorCmd := exec.Command(KernFuncToolRelPath, comm, kernFunc, outputFilePath)
+
+	//start monitorcmd
+	if err := monitorCmd.Start(); err != nil {
+		return fmt.Errorf("error starting bpftrace: %v", err)
+	}
+	fmt.Printf("Started kernel function monitoring with PID %d\n", monitorCmd.Process.Pid)
+
+	MonitorCmds = append(MonitorCmds, monitorCmd)
+	return nil
+}
+
+func startMonitorCctr() error {
+	monitorCmd := exec.Command(CctrMonitorScriptPath, CctrMonitorOutputPath)
+	if err := monitorCmd.Start(); err != nil {
+		return fmt.Errorf("error starting bpftrace: %v", err)
+	}
+	fmt.Printf("Started cctr monitoring with PID %d\n", monitorCmd.Process.Pid)
+
+	MonitorCmds = append(MonitorCmds, monitorCmd)
 	return nil
 }

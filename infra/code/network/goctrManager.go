@@ -16,18 +16,21 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"time"
 	"unsafe"
 
 	"github.com/vishvananda/netns"
 )
 
 type GoctrNodeManager struct {
-	nodeTmpDir    string
-	nodeId2Handle map[int]netns.NsHandle
+	nodeTmpDir string
+	// nodeId2Handle map[int]netns.NsHandle
+	nodeId2Pid map[int]int
 }
 
 func (nm *GoctrNodeManager) Init() error {
-	nm.nodeId2Handle = make(map[int]netns.NsHandle)
+	// nm.nodeId2Handle = make(map[int]netns.NsHandle)
+	nm.nodeId2Pid = make(map[int]int)
 	var err error
 	nm.nodeTmpDir = path.Join(TmpDir, "nodes")
 	if Operation == "setup" {
@@ -45,29 +48,54 @@ func (nm *GoctrNodeManager) Init() error {
 	return nil
 }
 
-func (nm *GoctrNodeManager) Delete() error {
+func writeIntToFile(filePath string, number int) error {
+	// Create the file, or open it if it exists, with write-only permissions and create if not exist
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("error creating or opening file: %v", err)
+	}
+	defer file.Close()
+
+	// Write the integer to the file
+	_, err = fmt.Fprintf(file, "%d", number)
+	if err != nil {
+		return fmt.Errorf("error writing to file: %v", err)
+	}
+
 	return nil
 }
 
-func (nm *GoctrNodeManager) SetupNode(nodeId int) error {
+func (nm *GoctrNodeManager) Delete() error {
+	for nodeId, pid := range nm.nodeId2Pid {
+		nodeName := "node" + strconv.Itoa(nodeId)
+		baseDir := path.Join(nm.nodeTmpDir, nodeName)
+		pidFilePath := path.Join(baseDir, "pid.txt")
+		writeIntToFile(pidFilePath, pid)
+	}
+	time.Sleep(5 * time.Second)
+	return nil
+}
+
+func (nm *GoctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	var pid int
-	var nodeNetns netns.NsHandle
+	// var nodeNetns netns.NsHandle
 
 	nodeName := "node" + strconv.Itoa(nodeId)
 	baseDir := path.Join(nm.nodeTmpDir, nodeName)
 	err := os.MkdirAll(baseDir, os.ModePerm)
 	if err != nil {
 		fmt.Printf("Error MkdirAll: %s\n", err)
-		return err
+		return -1, err
 	}
 	hostName := nodeName
-	pidFilePath := path.Join(baseDir, "pid.txt")
-	pidFileArg := "--pid-file=" + pidFilePath
-	runLogFilePath := path.Join(baseDir, "run.log")
-	logFileArg := "--log-file=" + runLogFilePath
+	// pidFilePath := path.Join(baseDir, "pid.txt")
+	// pidFileArg := "--pid-file=" + pidFilePath
+	// runLogFilePath := path.Join(baseDir, "run.log")
+	// logFileArg := "--log-file=" + runLogFilePath
 
 	/* Make c function arguments */
-	args := []string{baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg}
+	// args := []string{baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg}
+	args := []string{baseDir, hostName, ImageRootfsPath}
 	cArgs := make([]*C.char, len(args))
 	for i, arg := range args {
 		cArgs[i] = C.CString(arg)
@@ -76,11 +104,13 @@ func (nm *GoctrNodeManager) SetupNode(nodeId int) error {
 	argc := C.int(len(cArgs))
 
 	// Setup operation
+	startCtrTime := time.Now()
 	cPid := C.goctr_run(argc, &cArgs[0])
 	pid = int(cPid)
 	if pid < 0 {
-		return fmt.Errorf("goctr_run for node %d failed", nodeId)
+		return -1, fmt.Errorf("goctr_run for node %d failed", nodeId)
 	}
+	ctrTime := time.Since(startCtrTime)
 
 	// // Cache netns handle of the node
 	// pid, err = nm.getNodePid(nodeId)
@@ -88,22 +118,33 @@ func (nm *GoctrNodeManager) SetupNode(nodeId int) error {
 	// 	fmt.Printf("Failed to get pid of node #%d: %s\n", nodeId, err)
 	// 	return err
 	// }
-	nodeNetns, err = netns.GetFromPid(pid)
-	if err != nil {
-		return err
-	}
-	nm.nodeId2Handle[nodeId] = nodeNetns
+	// nodeNetns, err = netns.GetFromPid(pid)
+	// if err != nil {
+	// 	return -1, err
+	// }
+	// nm.nodeId2Handle[nodeId] = nodeNetns
+	nm.nodeId2Pid[nodeId] = pid
 
-	return nil
+	return ctrTime, nil
 }
 
 func (nm *GoctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {
 	var ok bool
+	var pid int
+	var err error
 	var nodeNetns netns.NsHandle
 
-	nodeNetns, ok = nm.nodeId2Handle[nodeId]
+	// nodeNetns, ok = nm.nodeId2Handle[nodeId]
+	// if !ok {
+	// 	return nodeNetns, fmt.Errorf("trying to get a non-exist netns (node #%d)", nodeId)
+	// }
+	pid, ok = nm.nodeId2Pid[nodeId]
 	if !ok {
 		return nodeNetns, fmt.Errorf("trying to get a non-exist netns (node #%d)", nodeId)
+	}
+	nodeNetns, err = netns.GetFromPid(pid)
+	if err != nil {
+		return -1, err
 	}
 	return nodeNetns, nil
 }

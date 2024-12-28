@@ -12,10 +12,13 @@ infra/tmp/ctr_log
 infra/tmp/cctr_log
 infra/tmp/kern_func
 infra/tmp/*_log.txt
+infra/tmp/cctr_time.txt
 infra/tmp/topo/*.txt
 run.log
 kill.log
 pid.txt
 /results
 /solve.py
+perf*
+.vscode/
 __pycache__/

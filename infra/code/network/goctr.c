@@ -38,10 +38,34 @@ int verbose_mode = 0;
 static void verbose_output_ts(const char *ts_name) {
     struct timespec ts;
     uint64_t ts_value;
+    if (verbose_mode) {
+        clock_gettime(CLOCK_MONOTONIC, &ts); // end_time
+        ts_value = ts.tv_sec * 1e9 + ts.tv_nsec;
+        VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
+    }
+}
 
-    clock_gettime(CLOCK_MONOTONIC, &ts); // end_time
-    ts_value = ts.tv_sec * 1e9 + ts.tv_nsec;
-    VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
+
+void set_realtime_priority(int priority) {
+    struct sched_param param;
+    param.sched_priority = priority;
+
+    if (sched_setscheduler(0, SCHED_FIFO, &param) == -1) {
+        perror("sched_setscheduler failed");
+    } else {
+        printf("Successfully set real-time priority\n");
+    }
+}
+
+
+void pin_to_cpu(int cpu) {
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+
+    if (sched_setaffinity(0, sizeof(cpu_set_t), &cpuset) == -1) {
+        perror("sched_setaffinity failed");
+    }
 }
 
 
@@ -297,15 +321,15 @@ int container_run_inner(
     close(err_fds[1]);
     if (netns_fd >= 0) close(netns_fd);
 
-    ssize_t len = read(err_fds[0], chd_err, max_len);
-    verbose_output_ts("read_err_time");
+    // ssize_t len = read(err_fds[0], chd_err, max_len);
+    // verbose_output_ts("read_err_time");
     // anyway, child should exit immediately 
     waitpid(pid, NULL, 0);
-    if(len > 0) {
-        chd_err[len] = '\0';
-        close(err_fds[0]), close(event_fd);
-        return 0;
-    }
+    // if(len > 0) {
+    //     chd_err[len] = '\0';
+    //     close(err_fds[0]), close(event_fd);
+    //     return 0;
+    // }
     verbose_output_ts("wait_child_time");
 
     // receive grandchild pid from child
@@ -525,6 +549,10 @@ int goctr_kill(int argc, char *argv[]) {
 // ======================== Main ========================
 
 // int main(int argc, char *argv[]) {
+
+//     pin_to_cpu(3); // Pin to CPU 3en 1-99
+//     set_realtime_priority(90); // Priority betwe
+
 //     // Check for the minimum required arguments
 //     if (argc < 2) {
 //         fprintf(stderr, "Error: Missing mandatory 'op' argument.\n");
