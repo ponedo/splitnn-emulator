@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
-	"time"
 
 	"github.com/vishvananda/netns"
 )
@@ -40,7 +39,7 @@ func (nm *CctrNodeManager) Delete() error {
 	return nil
 }
 
-func (nm *CctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
+func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 	var pid int
 
 	nodeName := "node" + strconv.Itoa(nodeId)
@@ -48,7 +47,7 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	err := os.MkdirAll(baseDir, os.ModePerm)
 	if err != nil {
 		fmt.Printf("Error MkdirAll: %s\n", err)
-		return -1, err
+		return err
 	}
 	hostName := nodeName
 	pidFilePath := path.Join(baseDir, "pid.txt")
@@ -57,24 +56,22 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	// logFileArg := "--log-file=" + runLogFilePath
 
 	// Setup command
-	startCtrTime := time.Now()
 	// SetupNodeCommand := exec.Command(
 	// 	CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg)
 	SetupNodeCommand := exec.Command(
 		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg)
 	SetupNodeCommand.Run()
-	ctrTime := time.Since(startCtrTime)
 
 	pid, err = nm.getNodePid(nodeId)
 	if err != nil {
 		fmt.Printf("Failed to get pid of node #%d: %s\n", nodeId, err)
-		return -1, err
+		return err
 	}
 
 	// Cache pid of the node
 	nm.nodeId2Pid[nodeId] = pid
 
-	return ctrTime, nil
+	return nil
 }
 
 func (nm *CctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {

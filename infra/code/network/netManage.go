@@ -12,7 +12,7 @@ import (
 type NodeManager interface {
 	Init() error
 	Delete() error
-	SetupNode(int) (time.Duration, error)
+	SetupNode(int) error
 	GetNodeNetNs(int) (netns.NsHandle, error)
 	CleanNode(int) error
 }
@@ -31,9 +31,8 @@ func NetworkSetup(
 	backBoneNum int) error {
 	var err error
 	var curLinkNum int
-	var ctrTime, ctrTotalTime, nodeTotalTime, linkTotalTime time.Duration
+	var nodeTotalTime, linkTotalTime time.Duration
 	var hostNs netns.NsHandle
-	// var hostNs, origNs netns.NsHandle
 
 	nm.Init()
 	lm.Init(nm)
@@ -60,11 +59,10 @@ func NetworkSetup(
 
 		/* Setup next node and connectable links */
 		startNodeTime := time.Now()
-		ctrTime, err = nm.SetupNode(nodeId)
+		err = nm.SetupNode(nodeId)
 		if err != nil {
 			return err
 		}
-		ctrTotalTime += ctrTime
 		nodeTotalTime += time.Since(startNodeTime)
 
 		_, err = LinkLogFile.WriteString(
@@ -101,7 +99,6 @@ func NetworkSetup(
 		}
 		linkTotalTime += time.Since(startLinkTime)
 	}
-	fmt.Printf("Ctr setup time: %.2fs\n", ctrTotalTime.Seconds())
 	fmt.Printf("Node setup time: %.2fs\n", nodeTotalTime.Seconds())
 	fmt.Printf("Link setup time: %.2fs\n", linkTotalTime.Seconds())
 

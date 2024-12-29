@@ -74,7 +74,7 @@ func (nm *GoctrNodeManager) Delete() error {
 	return nil
 }
 
-func (nm *GoctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
+func (nm *GoctrNodeManager) SetupNode(nodeId int) error {
 	var pid int
 
 	nodeName := "node" + strconv.Itoa(nodeId)
@@ -82,7 +82,7 @@ func (nm *GoctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	err := os.MkdirAll(baseDir, os.ModePerm)
 	if err != nil {
 		fmt.Printf("Error MkdirAll: %s\n", err)
-		return -1, err
+		return err
 	}
 	hostName := nodeName
 	// pidFilePath := path.Join(baseDir, "pid.txt")
@@ -101,18 +101,16 @@ func (nm *GoctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	argc := C.int(len(cArgs))
 
 	// Setup operation
-	startCtrTime := time.Now()
 	cPid := C.goctr_run(argc, &cArgs[0])
 	pid = int(cPid)
 	if pid < 0 {
-		return -1, fmt.Errorf("goctr_run for node %d failed", nodeId)
+		return fmt.Errorf("goctr_run for node %d failed", nodeId)
 	}
-	ctrTime := time.Since(startCtrTime)
 
 	// Cache pid of the node
 	nm.nodeId2Pid[nodeId] = pid
 
-	return ctrTime, nil
+	return nil
 }
 
 func (nm *GoctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {
