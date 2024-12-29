@@ -336,9 +336,10 @@ if __name__ == "__main__":
         # Execute test commands
         print(setup_commands)
         execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-        time.sleep(10) # Wait for a while
+        time.sleep(15) # Wait for a while
         print(clean_commands)
         execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+        time.sleep(15) # Wait for a while
 
         # Reap results of current test
         reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)

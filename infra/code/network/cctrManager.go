@@ -14,12 +14,10 @@ import (
 
 type CctrNodeManager struct {
 	nodeTmpDir string
-	// nodeId2Handle map[int]netns.NsHandle
 	nodeId2Pid map[int]int
 }
 
 func (nm *CctrNodeManager) Init() error {
-	// nm.nodeId2Handle = make(map[int]netns.NsHandle)
 	nm.nodeId2Pid = make(map[int]int)
 	var err error
 	nm.nodeTmpDir = path.Join(TmpDir, "nodes")
@@ -44,7 +42,6 @@ func (nm *CctrNodeManager) Delete() error {
 
 func (nm *CctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	var pid int
-	// var nodeNetns netns.NsHandle
 
 	nodeName := "node" + strconv.Itoa(nodeId)
 	baseDir := path.Join(nm.nodeTmpDir, nodeName)
@@ -68,17 +65,13 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) (time.Duration, error) {
 	SetupNodeCommand.Run()
 	ctrTime := time.Since(startCtrTime)
 
-	// Cache netns handle of the node
 	pid, err = nm.getNodePid(nodeId)
 	if err != nil {
 		fmt.Printf("Failed to get pid of node #%d: %s\n", nodeId, err)
 		return -1, err
 	}
-	// nodeNetns, err = netns.GetFromPid(pid)
-	// if err != nil {
-	// 	return -1, err
-	// }
-	// nm.nodeId2Handle[nodeId] = nodeNetns
+
+	// Cache pid of the node
 	nm.nodeId2Pid[nodeId] = pid
 
 	return ctrTime, nil
@@ -90,10 +83,6 @@ func (nm *CctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {
 	var err error
 	var nodeNetns netns.NsHandle
 
-	// nodeNetns, ok = nm.nodeId2Handle[nodeId]
-	// if !ok {
-	// 	return nodeNetns, fmt.Errorf("trying to get a non-exist netns (node #%d)", nodeId)
-	// }
 	pid, ok = nm.nodeId2Pid[nodeId]
 	if !ok {
 		return nodeNetns, fmt.Errorf("trying to get a non-exist netns (node #%d)", nodeId)
