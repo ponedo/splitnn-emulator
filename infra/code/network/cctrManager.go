@@ -51,15 +51,15 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 	}
 	hostName := nodeName
 	pidFilePath := path.Join(baseDir, "pid.txt")
-	// runLogFilePath := path.Join(baseDir, "run.log")
+	runLogFilePath := path.Join(baseDir, "run.log")
 	pidFileArg := "--pid-file=" + pidFilePath
-	// logFileArg := "--log-file=" + runLogFilePath
+	logFileArg := "--log-file=" + runLogFilePath
 
 	// Setup command
-	// SetupNodeCommand := exec.Command(
-	// 	CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg)
 	SetupNodeCommand := exec.Command(
-		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg)
+		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg)
+	// SetupNodeCommand := exec.Command(
+	// 	CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg)
 	SetupNodeCommand.Run()
 
 	pid, err = nm.getNodePid(nodeId)

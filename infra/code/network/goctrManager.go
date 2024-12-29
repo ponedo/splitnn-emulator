@@ -85,14 +85,14 @@ func (nm *GoctrNodeManager) SetupNode(nodeId int) error {
 		return err
 	}
 	hostName := nodeName
-	// pidFilePath := path.Join(baseDir, "pid.txt")
-	// pidFileArg := "--pid-file=" + pidFilePath
-	// runLogFilePath := path.Join(baseDir, "run.log")
-	// logFileArg := "--log-file=" + runLogFilePath
+	pidFilePath := path.Join(baseDir, "pid.txt")
+	pidFileArg := "--pid-file=" + pidFilePath
+	runLogFilePath := path.Join(baseDir, "run.log")
+	logFileArg := "--log-file=" + runLogFilePath
 
 	/* Make c function arguments */
-	// args := []string{baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg}
-	args := []string{baseDir, hostName, ImageRootfsPath}
+	args := []string{baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg}
+	// args := []string{baseDir, hostName, ImageRootfsPath}
 	cArgs := make([]*C.char, len(args))
 	for i, arg := range args {
 		cArgs[i] = C.CString(arg)
