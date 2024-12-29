@@ -104,7 +104,7 @@ var_options = {
 
     "N": [
         "cctr",
-        "goctr"
+        # "goctr"
     ],
 
     "l": [
