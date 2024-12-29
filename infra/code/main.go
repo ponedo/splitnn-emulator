@@ -196,7 +196,7 @@ func SetSchedAndNice(niceValue int) error {
 }
 
 func main() {
-	if err := pinToCPU(3); err != nil {
+	if err := pinToCPU(0); err != nil {
 		log.Fatalf("Error pinning to CPU: %v", err)
 	}
 	// if err := setRealtimePriority(0, 85); err != nil {
