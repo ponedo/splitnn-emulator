@@ -576,7 +576,7 @@ void do_kill_command(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
 
-    pin_to_cpu(0); // Pin to CPU 3
+    // pin_to_cpu(0); // Pin to CPU 3
     // set_realtime_priority(90); // Priority between 1-99
     set_sched_and_nice(19);
 
