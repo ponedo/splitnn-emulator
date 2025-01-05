@@ -14,6 +14,7 @@ infra/tmp/kern_func
 infra/tmp/*_log.txt
 infra/tmp/cctr_time.txt
 infra/tmp/topo/*.txt
+dataproc/tmp/
 run.log
 kill.log
 pid.txt

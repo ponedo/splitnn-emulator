@@ -53,7 +53,7 @@ def plot_one_figure(
             x_value_type, y_value_type,
             output_dir, output_filename_prefix)
     else:
-        groupby_columns = curve_option_keys if len(curve_option_keys) > 1 \
+        groupby_columns = list(curve_option_keys) if len(curve_option_keys) > 1 \
             else curve_option_keys[0]
         for curve_option_values, curve_df in figure_df.groupby(groupby_columns):
             # sorted_curve_df = curve_df.sort_values(by=x_value_type)
