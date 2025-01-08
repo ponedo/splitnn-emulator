@@ -86,9 +86,11 @@ var_options = {
 
     "b": [
         1,
+        2,
+        3,
+        4,
         5,
         10,
-        50,
         100,
     ],
 
@@ -104,12 +106,19 @@ var_options = {
 
     "N": [
         "cctr",
-        "goctr"
+        # "goctr"
     ],
 
     "l": [
         "ntlbr",
     ],
+
+    "p": [
+        1,
+        2,
+        4,
+        8
+    ]
 }
 
 server_spec_options = {
@@ -339,7 +348,7 @@ if __name__ == "__main__":
         time.sleep(15) # Wait for a while
         print(clean_commands)
         execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
-        time.sleep(15) # Wait for a while
+        time.sleep(20) # Wait for a while
 
         # Reap results of current test
         reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)

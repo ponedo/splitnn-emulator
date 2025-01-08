@@ -47,6 +47,7 @@ var (
 	CctrMonitorOutputPath string
 	MonitorCmds           []*exec.Cmd
 	ImageRootfsPath       string
+	Parallel              int
 	DisableIpv6           int
 )
 
@@ -70,12 +71,13 @@ func ConfigServers(confFileName string) error {
 	return nil
 }
 
-func ConfigEnvs(serverID int, operation string, disableIpv6 int) error {
+func ConfigEnvs(serverID int, operation string, disableIpv6 int, parallel int) error {
 	server := ServerList[serverID]
 	Operation = operation
 	setLocalPhyIntf(server.PhyIntf)
 	setEnvPaths(server.WorkDir, server.DockerImageName)
 	setDisableIpv6(disableIpv6)
+	setParallel(parallel)
 	setKernelPtySysctl()
 	prepareRootfs(server.DockerImageName)
 	return nil
@@ -213,6 +215,10 @@ func setEnvPaths(workDir string, dockerImageName string) {
 
 func setDisableIpv6(disableIpv6 int) {
 	DisableIpv6 = disableIpv6
+}
+
+func setParallel(parallel int) {
+	Parallel = parallel
 }
 
 func setSysctlValue(path string, value string) error {

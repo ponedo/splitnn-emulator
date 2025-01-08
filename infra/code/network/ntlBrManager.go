@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/vishvananda/netlink"
@@ -13,11 +14,12 @@ import (
 )
 
 type NtlBrLinkManager struct {
-	curBackBoneNum int
-	curlinkNum     int
-	curBackBoneNs  netns.NsHandle
-	hostNetns      netns.NsHandle
-	nm             NodeManager
+	curBackBoneNum  int
+	curlinkNum      int
+	curlinkNumMutex sync.Mutex
+	curBackBoneNs   netns.NsHandle
+	hostNetns       netns.NsHandle
+	nm              NodeManager
 }
 
 func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
@@ -39,26 +41,26 @@ func (lm *NtlBrLinkManager) Delete() error {
 	return nil
 }
 
-func (lm *NtlBrLinkManager) SetupAndEnterBbNs() error {
+func (lm *NtlBrLinkManager) SetupAndEnterBbNs() (netns.NsHandle, error) {
 	bbnsName := "bbns" + strconv.Itoa(lm.curBackBoneNum)
 	backboneNsHandle, err := netns.NewNamed(bbnsName)
 	if err != nil {
 		fmt.Printf("failed to netns.NewNamed %s: %s\n", bbnsName, err)
-		return err
+		return -1, err
 	}
 	lm.curBackBoneNum += 1
 
 	err = netns.Set(backboneNsHandle)
 	if err != nil {
 		fmt.Printf("failed to netns.Set for bbns: %s\n", err)
-		return err
+		return -1, err
 	}
 
 	if DisableIpv6 == 1 {
-		err = DisableIpv6ForCurNetns()
+		err = disableIpv6ForCurNetns()
 		if err != nil {
 			fmt.Printf("failed to DisableIpv6 for current Netns: %s\n", err)
-			return err
+			return -1, err
 		}
 	}
 
@@ -66,7 +68,7 @@ func (lm *NtlBrLinkManager) SetupAndEnterBbNs() error {
 		lm.curBackBoneNs.Close()
 	}
 	lm.curBackBoneNs = backboneNsHandle
-	return nil
+	return backboneNsHandle, nil
 }
 
 func (lm *NtlBrLinkManager) CleanAllBbNs() error {
@@ -117,7 +119,6 @@ func (lm *NtlBrLinkManager) SetupLink(nodeIdi int, nodeIdj int, serverID int, vx
 	} else {
 		err = lm.SetupExternalLink(nodeIdi, nodeIdj, serverID, vxlanID)
 	}
-	lm.curlinkNum += 1
 	return err
 }
 
@@ -141,9 +142,16 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	defer nodejNetNs.Close()
 
 	/* Prepare other data structure */
+	if Parallel > 0 {
+		lm.curlinkNumMutex.Lock()
+	}
+	lm.curlinkNum += 1
 	brName = "br-" + strconv.Itoa(lm.curlinkNum)
 	vethNamei := "eth-" + strconv.Itoa(lm.curlinkNum) + "-i"
 	vethNamej := "eth-" + strconv.Itoa(lm.curlinkNum) + "-j"
+	if Parallel > 0 {
+		lm.curlinkNumMutex.Unlock()
+	}
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:  brName,
@@ -237,9 +245,15 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	defer nodeiNetNs.Close()
 
 	/* Create Vxlan */
+	if Parallel > 0 {
+		lm.curlinkNumMutex.Lock()
+	}
 	brName := "br-" + strconv.Itoa(lm.curlinkNum)
 	vxlanName := "eth-" + strconv.Itoa(lm.curlinkNum) + "-v"
 	vethNamei := "vxl-" + strconv.Itoa(lm.curlinkNum)
+	if Parallel > 0 {
+		lm.curlinkNumMutex.Unlock()
+	}
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:  brName,

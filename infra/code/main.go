@@ -24,6 +24,7 @@ var args struct {
 	LinkManagerType  string
 	NodeManagerType  string
 	DisableIpv6      int
+	Parallel         int
 	ServerConfigFile string
 	ServerID         int
 }
@@ -72,6 +73,12 @@ func parseArgs() {
 	flag.IntVar(
 		&args.DisableIpv6, "d", 0,
 		"Value of sysctl disable_ipv6")
+	// flag.IntVar(
+	// 	&args.Parallel, "parallel", 0,
+	// 	"Whether use parallel link setup")
+	flag.IntVar(
+		&args.Parallel, "p", 0,
+		"Whether use parallel link setup")
 	// flag.StringVar(
 	// 	&args.ServerConfigFile, "server-file", "",
 	// 	"Name of server config file")
@@ -223,7 +230,7 @@ func main() {
 		goto clean
 	}
 	redirectOutput(network.ServerList[args.ServerID].WorkDir, args.Operation)
-	err = network.ConfigEnvs(args.ServerID, args.Operation, args.DisableIpv6)
+	err = network.ConfigEnvs(args.ServerID, args.Operation, args.DisableIpv6, args.Parallel)
 	if err != nil {
 		goto clean
 	}

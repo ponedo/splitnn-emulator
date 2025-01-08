@@ -20,7 +20,7 @@ type NodeManager interface {
 type LinkManager interface {
 	Init(NodeManager) error
 	Delete() error
-	SetupAndEnterBbNs() error
+	SetupAndEnterBbNs() (netns.NsHandle, error)
 	CleanAllBbNs() error
 	SetupLink(int, int, int, int) error
 }
@@ -32,7 +32,8 @@ func NetworkSetup(
 	var err error
 	var curLinkNum int
 	var nodeTotalTime, linkTotalTime time.Duration
-	var hostNs netns.NsHandle
+	var hostNs, curBackBoneNs netns.NsHandle
+	var threadPool *ThreadPool
 
 	nm.Init()
 	lm.Init(nm)
@@ -42,6 +43,12 @@ func NetworkSetup(
 		return err
 	}
 	defer hostNs.Close()
+
+	/* Prepare a thread pool if needed */
+	if Parallel > 0 {
+		threadPool = NewThreadPool(Parallel)
+		threadPool.Run()
+	}
 
 	tmpTime := time.Now()
 	nodeNum := g.GetNodeNum()
@@ -71,20 +78,39 @@ func NetworkSetup(
 			return err
 		}
 
+		/* Setup connectable links */
 		startLinkTime := time.Now()
 		for _, edge := range edgeOrder[i] {
 			curLinkStartTime := time.Now()
 			/* Create new backbone network namespace on demand */
 			if curLinkNum%linkPerBackBoneNs == 0 {
-				err = lm.SetupAndEnterBbNs()
+				curBackBoneNs, err = lm.SetupAndEnterBbNs()
 				if err != nil {
 					return err
 				}
 			}
-			/* Setup connectable links */
-			err = lm.SetupLink(edge[0], edge[1], edge[2], edge[3])
-			if err != nil {
-				return err
+			if Parallel > 0 {
+				threadPool.AddTask(
+					func(args ...interface{}) error {
+						var err error
+						bbns := args[0].(netns.NsHandle)
+						edge := args[1].([4]int)
+						err = netns.Set(bbns)
+						if err != nil {
+							return err
+						}
+						err = lm.SetupLink(edge[0], edge[1], edge[2], edge[3])
+						if err != nil {
+							fmt.Printf("SetupLink (%d, %d) failed %v, !\n", edge[0], edge[1], err)
+							return err
+						}
+						return nil
+					}, curBackBoneNs, edge)
+			} else {
+				err = lm.SetupLink(edge[0], edge[1], edge[2], edge[3])
+				if err != nil {
+					return err
+				}
 			}
 
 			curLinkTime := time.Since(curLinkStartTime)
@@ -96,6 +122,14 @@ func NetworkSetup(
 			}
 
 			curLinkNum += 1
+		}
+		if Parallel > 0 && len(edgeOrder[i]) > 0 {
+			threadPool.Wait()
+			if threadPool.hasError {
+				for err := range threadPool.errors {
+					return err
+				}
+			}
 		}
 		linkTotalTime += time.Since(startLinkTime)
 	}
@@ -132,7 +166,7 @@ func NetworkClean(
 	return nil
 }
 
-func DisableIpv6ForCurNetns() error {
+func disableIpv6ForCurNetns() error {
 	// Set disable_ipv6 for the namespace
 	path := "/proc/sys/net/ipv6/conf/all/disable_ipv6"
 	disableIPv6 := "1"

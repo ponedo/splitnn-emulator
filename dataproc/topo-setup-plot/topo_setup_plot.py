@@ -14,12 +14,13 @@ args = parser.parse_args()
 ###################### Plot options ######################
 # Plottable figure types
 valid_options = [
-    't', 'b', 'a', 'd', 'N', 'l'
+    't', 'b', 'a', 'd', 'N', 'l', 'p'
 ]
 valid_x_values = [
     'node_num',
     'link_num',
-    'b'
+    'b',
+    'p'
 ]
 valid_y_values = [
     'node_setup_time',
@@ -34,6 +35,7 @@ curve_options = [
     ("t",),
     ("b",),
     ("a",),
+    ("p",),
     ("t", "b"),
     ("t", "a"),
     ("b", "a"),
@@ -43,6 +45,7 @@ x_value_types = [
     'node_num',
     'link_num',
     # 'b',
+    # 'p',
 ]
 y_value_types = [
     'node_setup_time',
