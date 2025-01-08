@@ -30,7 +30,7 @@ regex_patterns = {
 # Data storage
 data = {
     "x": [],  # XXX values
-    "total_time": [],
+    "run_total_time": [],
 }
 
 # Process each log file
@@ -45,10 +45,11 @@ for filename in sorted(os.listdir(folder_path)):
         data["x"].append(xxx_value)
 
         # Extract and calculate time values
-        start_time_ts = int(re.search(regex_patterns["run_start_time"], log_content).group(1))
-        total_time_ts = int(re.search(regex_patterns["run_total_time"], log_content).group(1))
-        total_time = total_time_ts - start_time_ts
-        data["total_time"].append(total_time)
+        log_timestamps = {}
+        for re_key, re_value in regex_patterns.items():
+            log_timestamps[re_key] = int(re.search(re_value, log_content).group(1))
+
+        data["run_total_time"].append(log_timestamps["run_total_time"] - log_timestamps["run_start_time"])
 
 # Sort data by x (XXX values)
 sorted_indices = np.argsort(data["x"])
@@ -74,27 +75,21 @@ def remove_outliers_with_window(x_values, y_values, proportion_threshold, window
     return np.array(clean_x), np.array(clean_y)
 
 # Remove outliers if a proportion threshold is provided
+data_keys = list(data.keys())
+data_keys.remove("x")
 if proportion_threshold is not None:
-    data["x"], data["total_time"] = remove_outliers_with_window(data["x"], data["total_time"], proportion_threshold, window_size)
+    for k in data_keys:
+        ktype = k.split('_')[0]
+        data[f"x_{ktype}"], data[k] = \
+            remove_outliers_with_window(data["x"], data[k], proportion_threshold, window_size)
 else:
-    data["x"] = data["x"]
-
-# Create two curves
-sample_num = len(data["x"])
-acc_setup_time = 0
-data["acc_setup_time"] = np.copy(data["total_time"])
-for i in range(sample_num):
-    acc_setup_time += data["acc_setup_time"][i]
-    data["acc_setup_time"][i] = acc_setup_time
-data["linear"] = np.copy(data["total_time"])
-sample_x = sample_num // 100
-K = data["acc_setup_time"][sample_x] / sample_x
-for i in range(sample_num):
-    data["linear"][i] = K * i
+    for k in data_keys:
+        ktype = k.split('_')[0]
+        data[f"x_{ktype}"] = data["x"]
 
 # Output each curve's data to a separate CSV file
-for curve_name in ["acc_setup_time"]:
-    x_key = f"x"
+for curve_name in data_keys:
+    x_key = f"x_{curve_name.split('_')[0]}"
     y_key = curve_name
     if proportion_threshold is not None:
         output_csv_path = os.path.join(folder_path, f"{curve_name}_outliers_removed_w{window_size}_r{int(args.outlier_tolerance_offset_ratio)}.csv")
@@ -106,21 +101,23 @@ for curve_name in ["acc_setup_time"]:
 
 # Plot the data
 plt.figure(figsize=(10, 6))
-plt.plot(data["x"], data["acc_setup_time"], label="accumulated node setup time")
-plt.plot(data["x"], data["linear"], '--', label="linear time")
+
+for k in data_keys:
+    ktype = k.split('_')[0]
+    plt.plot(data[f"x_{ktype}"], data[k], label=ktype)
 
 # Customize the plot
 plt.xlabel("node i")
 plt.ylabel("Time (ms)")
-plt.title(f"Accumulated setup time per node")
+plt.title(f"Setup time per node")
 plt.legend()
 plt.grid(True)
 
 # Save the figure
 if proportion_threshold is not None:
-    output_filename = f"acc_setup_time_outlier_w{window_size}_r{int(args.outlier_tolerance_offset_ratio)}.png"
+    output_filename = f"per_node_setup_time_outlier_w{window_size}_r{int(args.outlier_tolerance_offset_ratio)}.png"
 else:
-    output_filename = "acc_setup_time_original.png"
+    output_filename = "per_node_setup_time_original.png"
 output_path = os.path.join(folder_path, output_filename)
 plt.savefig(output_path)
 plt.close()

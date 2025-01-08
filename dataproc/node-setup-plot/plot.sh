@@ -8,9 +8,15 @@ python3 ${WORK_DIR}/plot_outlier_profile.py ${logdir} --outlier-tolerance-offset
 # python3 ${WORK_DIR}/plot_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 100
 # python3 ${WORK_DIR}/plot_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 200
 
-# python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir}
+python3 ${WORK_DIR}/plot_per_node_outlier_profile.py ${logdir}
+# python3 ${WORK_DIR}/plot_per_node_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 1 --window 100
+python3 ${WORK_DIR}/plot_per_node_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 1 --window 200
+# python3 ${WORK_DIR}/plot_per_node_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 100
+# python3 ${WORK_DIR}/plot_per_node_outlier_profile.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 200
+
+python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir}
 # python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir} --outlier-tolerance-offset-ratio 1 --window 100
-# python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir} --outlier-tolerance-offset-ratio 1 --window 200
+python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir} --outlier-tolerance-offset-ratio 1 --window 200
 # python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 100
 # python3 ${WORK_DIR}/plot_outlier_acc_time.py ${logdir} --outlier-tolerance-offset-ratio 2 --window 200
 
