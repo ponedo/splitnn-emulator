@@ -3,6 +3,7 @@ from itertools import product
 from input_data import *
 from output_data import *
 from plot_utils import *
+from thread_pool import *
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process results of a group of tests.")
@@ -14,7 +15,8 @@ args = parser.parse_args()
 ###################### Plot options ######################
 # Plottable figure types
 valid_options = [
-    't', 'b', 'a', 'd', 'N', 'l', 'p'
+    # 't', 'b', 'a', 'd', 'N', 'l', 'p'
+    't', 'b', 'a', 'd', 'N', 'l'
 ]
 valid_x_values = [
     'node_num',
@@ -35,7 +37,7 @@ curve_options = [
     ("t",),
     ("b",),
     ("a",),
-    ("p",),
+    # ("p",),
     ("t", "b"),
     ("t", "a"),
     ("b", "a"),
@@ -64,6 +66,9 @@ if __name__ == "__main__":
         exit(1)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir, exist_ok=True)
+
+    # Prepare thread pool
+    pool = ThreadPool(max_workers=5)
 
     # Read raw results from test_results_dir.
     # Then, store options, topo info, and test result data of all tests in a DataFrame
@@ -109,8 +114,16 @@ if __name__ == "__main__":
             # Group by (x_value_type, y_value_type). Each group corresponds to a figure
             for x_value_type, y_value_type in product(x_value_types, y_value_types):
                 print(f"Plotting figure with axes: {x_value_type} {y_value_type}...")
-                plot_one_figure(
+                pool.add_task(
+                    plot_one_figure, 
                     figure_suite_df, fixed_options, curve_option_keys,
                     x_value_type, y_value_type,
-                    figure_suite_dir, args.overwrite
-                )
+                    figure_suite_dir, args.overwrite)
+                # plot_one_figure(
+                #     figure_suite_df, fixed_options, curve_option_keys,
+                #     x_value_type, y_value_type,
+                #     figure_suite_dir, args.overwrite
+                # )
+
+    pool.wait_for_completion()
+    pool.shutdown()
