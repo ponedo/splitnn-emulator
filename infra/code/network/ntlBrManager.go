@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -72,42 +71,13 @@ func (lm *NtlBrLinkManager) SetupAndEnterBbNs() (netns.NsHandle, error) {
 }
 
 func (lm *NtlBrLinkManager) CleanAllBbNs() error {
-	var err error
-	var start, end time.Time
-
-	start = time.Now()
+	/* Disable bbns ipv6 */
 
 	/* Destroy all netns */
 	destroyCommand := exec.Command(
 		"ip", "-all", "netns", "del")
 	destroyCommand.Stdout = os.Stdout
 	destroyCommand.Run()
-
-	/* Use multiple "ip link add test-link" to probe whether rtnl_lock is released by netns deletion */
-	testTime := 50
-	probeLink := &netlink.Dummy{
-		LinkAttrs: netlink.LinkAttrs{
-			Name: "probe-dummy",
-		},
-	}
-	time.Sleep(2 * time.Second)
-	for i := 0; i < testTime; i += 1 {
-		err = netlink.LinkAdd(probeLink)
-		if err != nil {
-			fmt.Printf("failed to LinkAdd at : %s", err)
-			return err
-		}
-		err = netlink.LinkDel(probeLink)
-		if err != nil {
-			fmt.Printf("failed to LinkDel: %s", err)
-			return err
-		}
-		end = time.Now()
-		fmt.Printf("Probe %d time: %dms\n", i, end.Sub(start).Milliseconds())
-	}
-	end = time.Now()
-	fmt.Printf("Clean link time: %dms\n", end.Sub(start).Milliseconds())
-
 	return nil
 }
 

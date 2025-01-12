@@ -6,6 +6,7 @@ import (
 	"time"
 	"topo_setup_test/algo"
 
+	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
@@ -152,13 +153,22 @@ func NetworkClean(
 	g *algo.Graph, nodeOrder []int, edgeOrder [][][4]int,
 	backBoneNum int) error {
 
+	var startTime time.Time
+
 	nm.Init()
 	lm.Init(nm)
 
-	lm.CleanAllBbNs()
+	startTime = time.Now()
 	for nodeId := range g.AdjacencyList {
+		// fmt.Printf("nodeId: %d\n", nodeId)
 		nm.CleanNode(nodeId)
 	}
+	syncNtlk()
+	fmt.Printf("Clean node time: %.2fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
+	lm.CleanAllBbNs()
+	syncNtlk()
+	fmt.Printf("Clean bbns time: %.2fs\n", time.Since(startTime).Seconds())
 
 	lm.Delete()
 	nm.Delete()
@@ -180,6 +190,36 @@ func disableIpv6ForCurNetns() error {
 	_, err = f.WriteString(disableIPv6)
 	if err != nil {
 		return fmt.Errorf("failed to write to sysctl file: %v", err)
+	}
+
+	return nil
+}
+
+func syncNtlk() error {
+	var err error
+	var start, end time.Time
+
+	/* Use multiple "ip link add test-link" to probe whether rtnl_lock is released by netns deletion */
+	testTime := 100
+	probeLink := &netlink.Dummy{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: "probe-dummy",
+		},
+	}
+	time.Sleep(2 * time.Second)
+	for i := 0; i < testTime; i += 1 {
+		err = netlink.LinkAdd(probeLink)
+		if err != nil {
+			fmt.Printf("failed to LinkAdd at : %s", err)
+			return err
+		}
+		err = netlink.LinkDel(probeLink)
+		if err != nil {
+			fmt.Printf("failed to LinkDel: %s", err)
+			return err
+		}
+		end = time.Now()
+		fmt.Printf("Probe %d time: %dms\n", i, end.Sub(start).Milliseconds())
 	}
 
 	return nil
