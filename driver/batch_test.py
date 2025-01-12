@@ -26,6 +26,7 @@ REMOTE_RESULT_PATHS = [
     ("dir", "tmp/ctr_log"),
     ("dir", "tmp/kern_func"),
     ("dir", "tmp/cctr_time.txt"),
+    ("dir", "tmp/cpu_time.txt"),
 ]
 
 ######################### Command options ############################

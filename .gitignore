@@ -1,3 +1,4 @@
+!placeholder
 driver/topo/*.*
 driver/results*
 driver/raw_results/
@@ -5,15 +6,7 @@ driver/METIS/
 driver/GKlib/
 driver/batch_test_log
 infra/bin/*
-infra/tmp/img*
-infra/tmp/nodes/*
-infra/tmp/nodes/*
-infra/tmp/ctr_log
-infra/tmp/cctr_log
-infra/tmp/kern_func
-infra/tmp/*_log.txt
-infra/tmp/cctr_time.txt
-infra/tmp/topo/*.txt
+infra/tmp/
 dataproc/tmp/
 run.log
 kill.log

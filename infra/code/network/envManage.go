@@ -45,6 +45,8 @@ var (
 	KernFuncLogDir        string
 	CctrMonitorScriptPath string
 	CctrMonitorOutputPath string
+	CpuMonitorScriptPath  string
+	CpuMonitorOutputPath  string
 	MonitorCmds           []*exec.Cmd
 	ImageRootfsPath       string
 	Parallel              int
@@ -106,6 +108,10 @@ func StartMonitor(serverID int, operation string, nmManagerType string) error {
 	/* Start monitoring cctr */
 	if operation == "setup" && nmManagerType == "cctr" {
 		err = startMonitorCctr()
+		if err != nil {
+			return err
+		}
+		err = startMonitorCpu()
 		if err != nil {
 			return err
 		}
@@ -206,6 +212,8 @@ func setEnvPaths(workDir string, dockerImageName string) {
 	KernFuncLogDir = path.Join(TmpDir, "kern_func")
 	CctrMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cctr_time.sh")
 	CctrMonitorOutputPath = path.Join(TmpDir, "cctr_time.txt")
+	CpuMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cpu_usage.py")
+	CpuMonitorOutputPath = path.Join(TmpDir, "cpu_time.txt")
 
 	splitedImageName := strings.Split(dockerImageName, ":")
 	ImageRepo := splitedImageName[0]
@@ -331,6 +339,17 @@ func startMonitorKernFunc(funcEntry []string, operation string) error {
 
 func startMonitorCctr() error {
 	monitorCmd := exec.Command(CctrMonitorScriptPath, CctrMonitorOutputPath)
+	if err := monitorCmd.Start(); err != nil {
+		return fmt.Errorf("error starting bpftrace: %v", err)
+	}
+	fmt.Printf("Started cctr monitoring with PID %d\n", monitorCmd.Process.Pid)
+
+	MonitorCmds = append(MonitorCmds, monitorCmd)
+	return nil
+}
+
+func startMonitorCpu() error {
+	monitorCmd := exec.Command("python3", "-u", CpuMonitorScriptPath, CpuMonitorOutputPath)
 	if err := monitorCmd.Start(); err != nil {
 		return fmt.Errorf("error starting bpftrace: %v", err)
 	}
