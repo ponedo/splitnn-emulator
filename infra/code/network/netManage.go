@@ -51,18 +51,22 @@ func NetworkSetup(
 		threadPool.Run()
 	}
 
-	tmpTime := time.Now()
-	nodeNum := g.GetNodeNum()
 	reportTime := 100
+	nodeNum := g.GetNodeNum()
+	linkNum := g.GetEdgeNum()
+	nodeTmpTime := time.Now()
+	linkTmpTime := time.Now()
 	nodePerReport := nodeNum / reportTime
+	linkPerReport := linkNum / reportTime
 	linkPerBackBoneNs := (g.GetEdgeNum() + backBoneNum - 1) / backBoneNum
 	for i, nodeId := range nodeOrder {
 		/* Progress reporter */
 		if nodePerReport > 0 && i%nodePerReport == 0 {
 			progress := 100 * i / nodeNum
 			curTime := time.Now()
-			fmt.Printf("%d%% nodes are added, time elapsed from last report: %dms\n", progress, curTime.Sub(tmpTime).Milliseconds())
-			tmpTime = time.Now()
+			fmt.Printf("%d%% nodes are added, time elapsed from last report: %dms\n",
+				progress, curTime.Sub(nodeTmpTime).Milliseconds())
+			nodeTmpTime = time.Now()
 		}
 
 		/* Setup next node and connectable links */
@@ -108,6 +112,13 @@ func NetworkSetup(
 						return nil
 					}, curBackBoneNs, edge)
 			} else {
+				if linkPerReport > 0 && curLinkNum%linkPerReport == 0 {
+					progress := 100 * curLinkNum / linkNum
+					curTime := time.Now()
+					fmt.Printf("%d%% links are added, time elapsed from last report: %dms\n",
+						progress, curTime.Sub(linkTmpTime).Milliseconds())
+					linkTmpTime = time.Now()
+				}
 				err = lm.SetupLink(edge[0], edge[1], edge[2], edge[3])
 				if err != nil {
 					return err
