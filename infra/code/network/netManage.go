@@ -218,6 +218,7 @@ func syncNtlk() error {
 		},
 	}
 	time.Sleep(2 * time.Second)
+	start = time.Now()
 	for i := 0; i < testTime; i += 1 {
 		err = netlink.LinkAdd(probeLink)
 		if err != nil {
