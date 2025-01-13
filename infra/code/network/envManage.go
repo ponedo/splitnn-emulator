@@ -213,7 +213,7 @@ func setEnvPaths(workDir string, dockerImageName string) {
 	CctrMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cctr_time.sh")
 	CctrMonitorOutputPath = path.Join(TmpDir, "cctr_time.txt")
 	CpuMemMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cpu_mem_usage.py")
-	CpuMemMonitorOutputPath = path.Join(TmpDir, "cpu_mem_time.txt")
+	CpuMemMonitorOutputPath = path.Join(TmpDir, "cpu_mem_usage.txt")
 
 	splitedImageName := strings.Split(dockerImageName, ":")
 	ImageRepo := splitedImageName[0]

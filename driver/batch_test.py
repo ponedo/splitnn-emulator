@@ -26,7 +26,7 @@ REMOTE_RESULT_PATHS = [
     ("dir", "tmp/ctr_log"),
     ("dir", "tmp/kern_func"),
     ("dir", "tmp/cctr_time.txt"),
-    ("dir", "tmp/cpu_time.txt"),
+    ("dir", "tmp/cpu_mem_usage.txt"),
 ]
 
 ######################### Command options ############################
@@ -40,7 +40,7 @@ var_options = {
     "t": [
         # ["isolated", "100"],
         # ["grid", "100", "100"],
-        # ["isolated", "10000"],
+        ["isolated", "10000"],
         # ["grid", "60", "60"],
         # ["isolated", "3600"],
 
@@ -87,22 +87,22 @@ var_options = {
 
     "b": [
         1,
-        2,
-        3,
-        4,
-        5,
-        10,
-        100,
+        # 2,
+        # 3,
+        # 4,
+        # 5,
+        # 10,
+        # 100,
     ],
 
     "a": [
-        "dynamic",
+        # "dynamic",
         "naive",
     ],
 
     "d": [
         0,
-        1
+        # 1
     ],
 
     "N": [
@@ -114,12 +114,12 @@ var_options = {
         "ntlbr",
     ],
 
-    "p": [
-        1,
-        2,
-        4,
-        8
-    ]
+    # "p": [
+    #     0,
+    #     2,
+    #     4,
+    #     8
+    # ]
 }
 
 server_spec_options = {
