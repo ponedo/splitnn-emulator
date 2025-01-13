@@ -30,27 +30,27 @@ type Servers struct {
 }
 
 var (
-	Operation             string
-	ServerList            []Server
-	LocalPhyIntf          string
-	LocalPhyIntfNl        netlink.Link
-	WorkDir               string
-	TmpDir                string
-	BinDir                string
-	CctrBinPath           string
-	CtrLogPath            string
-	LinkLogPath           string
-	LinkLogFile           *os.File
-	KernFuncToolRelPath   string
-	KernFuncLogDir        string
-	CctrMonitorScriptPath string
-	CctrMonitorOutputPath string
-	CpuMonitorScriptPath  string
-	CpuMonitorOutputPath  string
-	MonitorCmds           []*exec.Cmd
-	ImageRootfsPath       string
-	Parallel              int
-	DisableIpv6           int
+	Operation               string
+	ServerList              []Server
+	LocalPhyIntf            string
+	LocalPhyIntfNl          netlink.Link
+	WorkDir                 string
+	TmpDir                  string
+	BinDir                  string
+	CctrBinPath             string
+	CtrLogPath              string
+	LinkLogPath             string
+	LinkLogFile             *os.File
+	KernFuncToolRelPath     string
+	KernFuncLogDir          string
+	CctrMonitorScriptPath   string
+	CctrMonitorOutputPath   string
+	CpuMemMonitorScriptPath string
+	CpuMemMonitorOutputPath string
+	MonitorCmds             []*exec.Cmd
+	ImageRootfsPath         string
+	Parallel                int
+	DisableIpv6             int
 )
 
 func ConfigServers(confFileName string) error {
@@ -111,7 +111,7 @@ func StartMonitor(serverID int, operation string, nmManagerType string) error {
 		if err != nil {
 			return err
 		}
-		err = startMonitorCpu()
+		err = startMonitorCpuMem()
 		if err != nil {
 			return err
 		}
@@ -212,8 +212,8 @@ func setEnvPaths(workDir string, dockerImageName string) {
 	KernFuncLogDir = path.Join(TmpDir, "kern_func")
 	CctrMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cctr_time.sh")
 	CctrMonitorOutputPath = path.Join(TmpDir, "cctr_time.txt")
-	CpuMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cpu_usage.py")
-	CpuMonitorOutputPath = path.Join(TmpDir, "cpu_time.txt")
+	CpuMemMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cpu_mem_usage.py")
+	CpuMemMonitorOutputPath = path.Join(TmpDir, "cpu_mem_time.txt")
 
 	splitedImageName := strings.Split(dockerImageName, ":")
 	ImageRepo := splitedImageName[0]
@@ -348,8 +348,9 @@ func startMonitorCctr() error {
 	return nil
 }
 
-func startMonitorCpu() error {
-	monitorCmd := exec.Command("python3", "-u", CpuMonitorScriptPath, CpuMonitorOutputPath)
+func startMonitorCpuMem() error {
+	monitorCmd := exec.Command(
+		"python3", "-u", CpuMemMonitorScriptPath, CpuMemMonitorOutputPath)
 	if err := monitorCmd.Start(); err != nil {
 		return fmt.Errorf("error starting bpftrace: %v", err)
 	}
