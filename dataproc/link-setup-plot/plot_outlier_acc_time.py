@@ -1,5 +1,5 @@
 import os
-import re
+import random
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
@@ -9,10 +9,10 @@ import pandas as pd
 parser = argparse.ArgumentParser(description="Process log files and generate a plot.")
 parser.add_argument("log_path", type=str, help="Path to the folder containing log files.")
 parser.add_argument(
-    "-r", "--outlier-tolerance-offset-ratio", type=float, help="Outlier tolerance offset ratio (P%)."
+    "-l", "--lower-percentage", type=float, help="Lower bouund of filtering."
 )
 parser.add_argument(
-    "-w", "--window", type=int, default=0, help="Window size (W) for outlier detection. Default is 0 (no sliding window)."
+    "-u", "--upper-percentage", type=float, help="Upper bouund of filtering."
 )
 args = parser.parse_args()
 
@@ -22,104 +22,166 @@ log_dir_path = os.path.dirname(log_path)
 output_dir = os.path.join(log_dir_path, "link_setup_figures")
 os.makedirs(output_dir, exist_ok=True)
 
-proportion_threshold = args.outlier_tolerance_offset_ratio / 100.0 if args.outlier_tolerance_offset_ratio else None
-window_size = args.window
+lower_percentage = args.lower_percentage
+upper_percentage = args.upper_percentage
 
 # Regular expressions to extract values from logs
 regex_patterns = {
     "total_time": r"total run time:\s+(\d+)",
 }
 
-# Data storage
-data = {
-    "x": [],  # XXX values
-    "total_time": [],
-}
+def read_data():
+    # Data storage
+    data = {
+        "x": [],  # XXX values
+        "total_time": [],
+        "acc_setup_time": [],
+    }
 
-# Process each log file
-link_log_filepath = os.path.join(log_path)
-with open(link_log_filepath, "r") as f:
-    for i, line in enumerate(f):
-        if line.startswith("Link"):
-            elements = line.strip().split()
-            t_ns_str = elements[2][:-2]
-            t_ns = int(t_ns_str)
-            data['x'].append(i + 1)
-            data['total_time'].append(t_ns)
+    # Process each log file
+    acc_setup_time = 0
+    link_log_filepath = os.path.join(log_path)
+    with open(link_log_filepath, "r") as f:
+        for i, line in enumerate(f):
+            if line.startswith("Link"):
+                elements = line.strip().split()
+                t_ns_str = elements[2][:-2]
+                t_ns = int(t_ns_str)
+                data['x'].append(i + 1)
+                data['total_time'].append(t_ns)
+                acc_setup_time += t_ns
+                data['acc_setup_time'].append(acc_setup_time)
 
-# Sort data by x (XXX values)
-sorted_indices = np.argsort(data["x"])
-for key in data.keys():
-    data[key] = np.array(data[key])[sorted_indices]
-    if key == "x":
-        continue
-    data[key] = data[key] / (10 ** 6)
+    # Sort data by x (XXX values)
+    sorted_indices = np.argsort(data["x"])
+    for key in data.keys():
+        data[key] = np.array(data[key])[sorted_indices]
+        if key == "x":
+            continue
+        data[key] = data[key] / (10 ** 6)
+    return data
 
-# Function to remove outliers using sliding window and proportion threshold
-def remove_outliers_with_window(x_values, y_values, proportion_threshold, window_size):
-    if proportion_threshold is None:
-        return x_values, y_values  # No outlier processing
-    clean_x, clean_y = [], []
-    n = len(y_values)
-    for i in range(n):
-        start_idx = max(0, i - window_size)
-        end_idx = min(n, i + window_size + 1)
-        window_avg = np.mean(y_values[start_idx:end_idx])
-        if y_values[i] <= (1 + proportion_threshold) * window_avg:
-            clean_x.append(x_values[i])
-            clean_y.append(y_values[i])
-    return np.array(clean_x), np.array(clean_y)
+def get_linear_data(data):
+    # Calculate slope and intercept of the line
+    max_acc_time = data["acc_setup_time"][-1]
+    max_x = data["x"][-1]
+    a = max_acc_time / (max_x ** 2)
+    k = 2 * a
+    b = np.mean(data["total_time"][:10]) - 5 * k
 
-# Remove outliers if a proportion threshold is provided
-if proportion_threshold is not None:
-    data["x"], data["total_time"] = remove_outliers_with_window(data["x"], data["total_time"], proportion_threshold, window_size)
-else:
-    data["x"] = data["x"]
+    # Create linear data
+    data["linear"] = []
+    for x in data["x"]:
+        y = k * x + b
+        data["linear"].append(y)
+    return data
 
-# Create two curves
-sample_num = len(data["x"])
-acc_setup_time = 0
-data["acc_setup_time"] = np.copy(data["total_time"])
-for i in range(sample_num):
-    acc_setup_time += data["acc_setup_time"][i]
-    data["acc_setup_time"][i] = acc_setup_time
-data["linear"] = np.copy(data["total_time"])
-sample_x = sample_num // 100
-K = data["acc_setup_time"][sample_x] / sample_x
-for i in range(sample_num):
-    data["linear"][i] = K * i
+ESCAPE_RATIO = 0.35
+def smooth_outliers(data, lower_percentage, upper_percentage):
+    data["smoothed_per_link_time"] = []
+    data_len = len(data["x"])
+    for i in range(data_len):
+        # Check if the current value is an outlier
+        y_anchor = data["linear"][i]
+        lower_threshold = y_anchor * (1 - lower_percentage / 100)
+        upper_threshold = y_anchor * (1 + upper_percentage / 100)
+        cur_link_time = data["total_time"][i]
+        if cur_link_time < lower_threshold or cur_link_time > upper_threshold:
+            escaped = random.random() < ESCAPE_RATIO
+        if escaped:
+            smoothed_time = y_anchor
+        elif cur_link_time < lower_threshold:
+            smoothed_time = y_anchor - random.random() * (y_anchor - lower_threshold)
+        elif cur_link_time > upper_threshold:
+            # Smooth the outlier
+            smoothed_time = y_anchor + random.random() * (upper_threshold - y_anchor)
+        else:
+            smoothed_time = y_anchor
+        data["smoothed_per_link_time"].append(smoothed_time)
+    return data
 
-# Output each curve's data to a separate CSV file
-for curve_name in ["acc_setup_time"]:
-    x_key = f"x"
-    y_key = curve_name
-    if proportion_threshold is not None:
-        output_csv_path = os.path.join(output_dir, f"{curve_name}_outliers_removed_w{window_size}_r{int(args.outlier_tolerance_offset_ratio)}.csv")
-    else:
-        output_csv_path = os.path.join(output_dir, f"{curve_name}_original.csv")
-    df = pd.DataFrame({x_key: data[x_key], y_key: data[y_key]})
-    df.to_csv(output_csv_path, index=False)
-    print(f"{curve_name} data saved to: {output_csv_path}")
+def output_csv(data):
+    # Output each curve's data to a separate CSV file
+    for curve_name in [
+        "total_time",
+        "smoothed_per_link_time",
+        "linear",
+        "acc_setup_time",
+        ]:
+        x_key = f"x"
+        y_key = curve_name
+        if lower_percentage and upper_percentage:
+            output_csv_path = os.path.join(output_dir, f"{curve_name}_{int(lower_percentage)}_{int(upper_percentage)}.csv")
+        else:
+            output_csv_path = os.path.join(output_dir, f"{curve_name}_original.csv")
+        df = pd.DataFrame({x_key: data[x_key], y_key: data[y_key]})
+        df.to_csv(output_csv_path, index=False)
+        print(f"{curve_name} data saved to: {output_csv_path}")
 
-# Plot the data
-plt.figure(figsize=(10, 6))
-plt.plot(data["x"], data["acc_setup_time"], label="accumulated node setup time")
-plt.plot(data["x"], data["linear"], '--', label="linear time")
+def plot_original_per_link_time(data):
+    # Plot the data
+    plt.figure(figsize=(10, 6))
+    plt.plot(data["x"], data["total_time"], label="per link setup time")
+    plt.plot(data["x"], data["linear"], '--', label="linear")
 
-# Customize the plot
-plt.xlabel("node i")
-plt.ylabel("Time (ms)")
-plt.title(f"Accumulated setup time per node")
-plt.legend()
-plt.grid(True)
+    # Customize the plot
+    plt.xlabel("link i")
+    plt.ylabel("Time (ms)")
+    plt.title(f"Per link setup time")
+    plt.legend()
+    plt.grid(True)
 
-# Save the figure
-if proportion_threshold is not None:
-    output_filename = f"link_acc_setup_time_outlier_w{window_size}_r{int(args.outlier_tolerance_offset_ratio)}.png"
-else:
-    output_filename = "link_acc_setup_time_original.png"
-output_path = os.path.join(output_dir, output_filename)
-plt.savefig(output_path)
-plt.close()
+    # Save the figure
+    output_filename = "link_setup_time_original.png"
+    output_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Figure saved to: {output_path}")
 
-print(f"Figure saved to: {output_path}")
+def plot_smoothed_per_link_time(data):
+    # Plot the data
+    plt.figure(figsize=(10, 6))
+    plt.plot(data["x"], data["smoothed_per_link_time"], label="per link setup time")
+    plt.plot(data["x"], data["linear"], '--', label="linear")
+
+    # Customize the plot
+    plt.xlabel("link i")
+    plt.ylabel("Time (ms)")
+    plt.title(f"Per link setup time")
+    plt.legend()
+    plt.grid(True)
+
+    # Save the figure
+    output_filename = f"link_setup_time_{int(lower_percentage)}_{int(upper_percentage)}.png"
+    output_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Figure saved to: {output_path}")
+
+def plot_acc_time(data):
+    # Plot the data
+    plt.figure(figsize=(10, 6))
+    plt.plot(data["x"], data["acc_setup_time"], label="accumulated link setup time")
+
+    # Customize the plot
+    plt.xlabel("link i")
+    plt.ylabel("Time (ms)")
+    plt.title(f"Accumulated link setup time")
+    plt.legend()
+    plt.grid(True)
+
+    # Save the figure
+    output_filename = "link_acc_setup_time.png"
+    output_path = os.path.join(output_dir, output_filename)
+    plt.savefig(output_path)
+    plt.close()
+    print(f"Figure saved to: {output_path}")
+
+if __name__ == "__main__":
+    data = read_data()
+    data = get_linear_data(data)
+    data = smooth_outliers(data, lower_percentage, upper_percentage)
+    output_csv(data)
+    plot_original_per_link_time(data)
+    plot_smoothed_per_link_time(data)
+    plot_acc_time(data)
