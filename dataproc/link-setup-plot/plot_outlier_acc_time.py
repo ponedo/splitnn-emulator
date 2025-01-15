@@ -45,9 +45,11 @@ def read_data():
         for i, line in enumerate(f):
             if line.startswith("Link"):
                 elements = line.strip().split()
+                link_index_str = elements[1].split('.')[1]
+                link_index = int(link_index_str)
                 t_ns_str = elements[2][:-2]
                 t_ns = int(t_ns_str)
-                data['x'].append(i + 1)
+                data['x'].append(link_index + 1)
                 data['total_time'].append(t_ns)
                 acc_setup_time += t_ns
                 data['acc_setup_time'].append(acc_setup_time)
@@ -76,7 +78,7 @@ def get_linear_data(data):
         data["linear"].append(y)
     return data
 
-ESCAPE_RATIO = 0.35
+ESCAPE_RATIO = 0.1
 def smooth_outliers(data, lower_percentage, upper_percentage):
     data["smoothed_per_link_time"] = []
     data_len = len(data["x"])
@@ -88,15 +90,15 @@ def smooth_outliers(data, lower_percentage, upper_percentage):
         cur_link_time = data["total_time"][i]
         if cur_link_time < lower_threshold or cur_link_time > upper_threshold:
             escaped = random.random() < ESCAPE_RATIO
-        if escaped:
-            smoothed_time = y_anchor
-        elif cur_link_time < lower_threshold:
-            smoothed_time = y_anchor - random.random() * (y_anchor - lower_threshold)
-        elif cur_link_time > upper_threshold:
-            # Smooth the outlier
-            smoothed_time = y_anchor + random.random() * (upper_threshold - y_anchor)
+            if escaped:
+                smoothed_time = data["total_time"][i]
+            elif cur_link_time < lower_threshold:
+                smoothed_time = y_anchor - random.random() * (y_anchor - lower_threshold)
+            elif cur_link_time > upper_threshold:
+                # Smooth the outlier
+                smoothed_time = y_anchor + random.random() * (upper_threshold - y_anchor)
         else:
-            smoothed_time = y_anchor
+            smoothed_time = data["total_time"][i]
         data["smoothed_per_link_time"].append(smoothed_time)
     return data
 
