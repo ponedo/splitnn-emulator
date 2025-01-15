@@ -170,16 +170,16 @@ func NetworkClean(
 	lm.Init(nm)
 
 	startTime = time.Now()
+	lm.CleanAllBbNs()
+	syncNtlk()
+	fmt.Printf("Clean bbns time: %.2fs\n", time.Since(startTime).Seconds())
+	startTime = time.Now()
 	for nodeId := range g.AdjacencyList {
 		// fmt.Printf("nodeId: %d\n", nodeId)
 		nm.CleanNode(nodeId)
 	}
 	syncNtlk()
 	fmt.Printf("Clean node time: %.2fs\n", time.Since(startTime).Seconds())
-	startTime = time.Now()
-	lm.CleanAllBbNs()
-	syncNtlk()
-	fmt.Printf("Clean bbns time: %.2fs\n", time.Since(startTime).Seconds())
 
 	lm.Delete()
 	nm.Delete()

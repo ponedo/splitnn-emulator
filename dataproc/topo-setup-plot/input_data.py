@@ -9,7 +9,9 @@ regex_patterns = {
     "node_setup_time": r"Node setup time:\s+(\d+)", # s
     "link_setup_time": r"Link setup time:\s+(\d+)", # s
     "setup_time": r"Network operation time:\s+(\d+)", # s
-    "clean_time": r"Clean link time:\s+(\d+)", # ms
+    "link_clean_time": r"Clean bbns time:\s+(\d+)", # ms
+    "node_clean_time": r"Clean node time:\s+(\d+)", # ms
+    "clean_time": r"Network operation time:\s+(\d+)", # ms
 }
 
 def parse_test_opts(test_dirname, valid_options):
@@ -73,6 +75,8 @@ def get_one_test_results(test_dirpath):
         'node_setup_time': 0,
         'link_setup_time': 0,
         'setup_time': 0,
+        'link_clean_time': 0,
+        'node_clean_time': 0,
         'clean_time': 0,
     }
     for server_dirname in os.listdir(test_dirpath):
@@ -88,6 +92,10 @@ def get_one_test_results(test_dirpath):
             max(results["link_setup_time"], link_setup_time)
         results["setup_time"] = \
             max(results["setup_time"], setup_time)
+        results["link_clean_time"] = \
+            max(results["link_clean_time"], node_setup_time)
+        results["node_clean_time"] = \
+            max(results["node_clean_time"], link_setup_time)
         results["clean_time"] = \
             max(results["clean_time"], clean_time)
     return results

@@ -169,7 +169,7 @@ func ArchiveCtrLog(operation string,
 	/* Copy all log */
 	tmpTime := time.Now()
 	nodeNum := g.GetNodeNum()
-	reportTime := 100
+	reportTime := 10
 	nodePerReport := nodeNum / reportTime
 	for i, nodeId := range nodeOrder {
 		/* Progress reporter */
