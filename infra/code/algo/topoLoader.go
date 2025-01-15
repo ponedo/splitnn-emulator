@@ -17,6 +17,7 @@ func ReadGraphFromFile(filename string) (*Graph, error) {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 1024*1024), int(1024*1024))
 	graph := NewGraph()
 
 	// Read the first line to get node indices
