@@ -8,6 +8,8 @@ from copy import deepcopy
 from scripts.partition_topo import partition_graph
 from itertools import product
 from util.remote import *
+from util.topo_info import *
+from util.factor import *
 
 ############################ Constants ###############################
 
@@ -35,6 +37,7 @@ const_options = {
     "s": SERVER_CONFIG_PATH
 }
 
+BBNS_NUM_TEST = True
 var_options = {
     # Topologies
     "t": [
@@ -91,18 +94,8 @@ var_options = {
         3,
         4,
         5,
-        10,
-        25,
         50,
         100,
-        250,
-        500,
-        750,
-        1000,
-        1250,
-        1700,
-        2500,
-        5000,
     ],
 
     "a": [
@@ -131,6 +124,9 @@ var_options = {
     #     8
     # ]
 }
+
+if BBNS_NUM_TEST:
+    del(var_options["b"])
 
 server_spec_options = {
     "i": lambda i: i
@@ -249,6 +245,41 @@ def get_one_vn_manage_cmd(bin_path, operation, options):
     return vn_manage_cmd
 
 
+def generate_bbns_num_test_numbers(topo_args):
+    topo_type = topo_args[0]
+    topo_data = [int(arg) for arg in topo_args[1:]]
+    link_num = topo_funcs[topo_type]["get_link_num"](*topo_data)
+    bbns_nums = list_factors(link_num)
+    return bbns_nums
+
+
+def yield_one_cmd(opts, const_options, server_spec_options, server_config_list):
+    var_opts = deepcopy(opts)
+    opts.update(const_options)
+    topo_args = opts["t"]
+    # Prepare setup/clean commands for each server
+    setup_commands, clean_commands = {}, {}
+    for i, server in enumerate(server_config_list):
+        server_i_opts = deepcopy(opts)
+        # Add server-specific option (such as server id)
+        for server_spec_opt_key, server_spec_opt_value_func in server_spec_options.items():
+            server_i_opts.update({
+                server_spec_opt_key: server_spec_opt_value_func(i)
+            })
+        # Modify topo option
+        server_i_opts.update({
+            "t": os.path.join(INFRA_TOPO_PATH, get_sub_topo_filename(topo_args, i))
+        })
+        # Generate and cache commands
+        setup_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "setup", server_i_opts)
+        setup_commands[server["ipAddr"]] = \
+            (setup_command, server["infraWorkDir"], None, True)
+        clean_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "clean", server_i_opts)
+        clean_commands[server["ipAddr"]] = \
+            (clean_command, server["infraWorkDir"], None, True)
+    return var_opts, setup_commands, clean_commands
+
+
 def exp_cmds_iterator(
         const_options, var_options, server_spec_options,
         server_config_list):
@@ -257,30 +288,15 @@ def exp_cmds_iterator(
     for var_opt_comb in product(*var_options.values()):
         # Get a combination of options
         opts = dict(zip(var_opt_keys, var_opt_comb))
-        var_opts = deepcopy(opts)
-        opts.update(const_options)
-        topo_args = opts["t"]
-        # Prepare setup/clean commands for each server
-        setup_commands, clean_commands = {}, {}
-        for i, server in enumerate(server_config_list):
-            server_i_opts = deepcopy(opts)
-            # Add server-specific option (such as server id)
-            for server_spec_opt_key, server_spec_opt_value_func in server_spec_options.items():
-                server_i_opts.update({
-                    server_spec_opt_key: server_spec_opt_value_func(i)
-                })
-            # Modify topo option
-            server_i_opts.update({
-                "t": os.path.join(INFRA_TOPO_PATH, get_sub_topo_filename(topo_args, i))
-            })
-            # Generate and cache commands
-            setup_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "setup", server_i_opts)
-            setup_commands[server["ipAddr"]] = \
-                (setup_command, server["infraWorkDir"], None, True)
-            clean_command = get_one_vn_manage_cmd(INFRA_BIN_PATH, "clean", server_i_opts)
-            clean_commands[server["ipAddr"]] = \
-                (clean_command, server["infraWorkDir"], None, True)
-        yield var_opts, setup_commands, clean_commands
+        if BBNS_NUM_TEST:
+            bbns_nums = generate_bbns_num_test_numbers(opts["t"])
+            for bbns_num in bbns_nums:
+                opts_with_b = {"b": bbns_num, **opts}
+                yield yield_one_cmd(
+                    opts_with_b, const_options, server_spec_options, server_config_list)
+        else:
+            yield yield_one_cmd(
+                opts, const_options, server_spec_options, server_config_list)
 
 
 def get_one_test_log_name(var_opts):

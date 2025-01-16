@@ -13,6 +13,7 @@ pid.txt
 figures/
 raw_results/
 /results
+/factor.py
 /solve.py
 perf*
 .vscode/
