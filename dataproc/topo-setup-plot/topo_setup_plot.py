@@ -28,31 +28,35 @@ valid_y_values = [
     'node_setup_time',
     'link_setup_time',
     'setup_time',
-    'clean_time'
+    'link_clean_time',
+    'node_clean_time',
+    'clean_time',
 ]
 
 # Set how to process results
 curve_options = [
-    (),
+    # (),
     ("t",),
-    ("b",),
-    ("a",),
+    # ("b",),
+    # ("a",),
     # ("p",),
-    ("t", "b"),
-    ("t", "a"),
-    ("b", "a"),
-    ("t", "b", "a"),
+    # ("t", "b"),
+    # ("t", "a"),
+    # ("b", "a"),
+    # ("t", "b", "a"),
 ]
 x_value_types = [
-    'node_num',
-    'link_num',
-    # 'b',
+    # 'node_num',
+    # 'link_num',
+    'b',
     # 'p',
 ]
 y_value_types = [
     'node_setup_time',
     'link_setup_time',
     'setup_time',
+    'link_clean_time',
+    'node_clean_time',
     'clean_time',
 ]
 
@@ -82,48 +86,49 @@ if __name__ == "__main__":
     # Each figure adopts a (x_value_type, y_value_type) pair, and contains a set of curves
     # Each curve corresponds to a set of curve_options value
 
-    # For each curve option tuple, how many option-specific figure-suite to draw? Combination of distinct fixed option values!
-    for curve_option_keys in curve_options:
-        print(f"Plotting figure-suite set for curve option keys {curve_option_keys}...")
-        # Create a directory for current figure-suite-set
-        figure_suite_set_dir = os.path.join(
-            args.output_dir, get_figure_suite_set_dirname(curve_option_keys))
-        os.makedirs(figure_suite_set_dir, exist_ok=True)
-        
-        # For each curve option tuple, options that are not curve options are fixed options.
-        fixed_option_keys = sorted(list(
-            set(valid_options) - set(curve_option_keys)
-        ))
-
-        # Group by fixed options. Each group corresponds to a "figure-suite"
-        groupby_columns = fixed_option_keys if len(fixed_option_keys) > 1 \
-            else fixed_option_keys[0]
-        suite_groups = all_data_df.groupby(groupby_columns)
-        for fixed_option_values, figure_suite_df in suite_groups:
-            if len(fixed_option_keys) > 1:
-                fixed_options = dict(zip(fixed_option_keys, fixed_option_values))
-            else:
-                fixed_options = {fixed_option_keys[0]: fixed_option_values}
-            print(f"Plotting figure-suite for fixed option keys {fixed_options}...")
+    for x_value_type, y_value_type in product(x_value_types, y_value_types):
+        # For each curve option tuple, how many option-specific figure-suite to draw? Combination of distinct fixed option values!
+        for curve_option_keys in curve_options:
+            curve_option_keys = list(set(curve_option_keys) - set([x_value_type, y_value_type]))
+            print(f"Plotting figure-suite set for curve option keys {curve_option_keys}...")
+            # Create a directory for current figure-suite-set
+            figure_suite_set_dir = os.path.join(
+                args.output_dir, get_figure_suite_set_dirname(curve_option_keys))
+            os.makedirs(figure_suite_set_dir, exist_ok=True)
             
-            # Create a directory for current figure-suite
-            figure_suite_dir = os.path.join(
-                figure_suite_set_dir, get_figure_suite_dirname(fixed_options))
-            os.makedirs(figure_suite_dir, exist_ok=True)
+            # For each curve option tuple, options that are not curve options are fixed options.
+            fixed_option_keys = sorted(list(
+                set(valid_options) - set(curve_option_keys) - set([x_value_type, y_value_type])
+            ))
 
-            # Group by (x_value_type, y_value_type). Each group corresponds to a figure
-            for x_value_type, y_value_type in product(x_value_types, y_value_types):
+            # Group by fixed options. Each group corresponds to a "figure-suite"
+            groupby_columns = fixed_option_keys if len(fixed_option_keys) > 1 \
+                else fixed_option_keys[0]
+            suite_groups = all_data_df.groupby(groupby_columns)
+            for fixed_option_values, figure_suite_df in suite_groups:
+                if len(fixed_option_keys) > 1:
+                    fixed_options = dict(zip(fixed_option_keys, fixed_option_values))
+                else:
+                    fixed_options = {fixed_option_keys[0]: fixed_option_values}
+                print(f"Plotting figure-suite for fixed option keys {fixed_options}...")
+                
+                # Create a directory for current figure-suite
+                figure_suite_dir = os.path.join(
+                    figure_suite_set_dir, get_figure_suite_dirname(fixed_options))
+                os.makedirs(figure_suite_dir, exist_ok=True)
+
+                # Plot one figure in axis (x_value_type, y_value_type)
                 print(f"Plotting figure with axes: {x_value_type} {y_value_type}...")
-                pool.add_task(
-                    plot_one_figure, 
-                    figure_suite_df, fixed_options, curve_option_keys,
-                    x_value_type, y_value_type,
-                    figure_suite_dir, args.overwrite)
-                # plot_one_figure(
+                # pool.add_task(
+                #     plot_one_figure, 
                 #     figure_suite_df, fixed_options, curve_option_keys,
                 #     x_value_type, y_value_type,
-                #     figure_suite_dir, args.overwrite
-                # )
+                #     figure_suite_dir, args.overwrite)
+                plot_one_figure(
+                    figure_suite_df, fixed_options, curve_option_keys,
+                    x_value_type, y_value_type,
+                    figure_suite_dir, args.overwrite
+                )
 
     pool.wait_for_completion()
     pool.shutdown()

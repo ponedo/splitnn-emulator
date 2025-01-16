@@ -67,16 +67,17 @@ def plot_one_figure(
                 output_dir, output_filename_prefix)
 
     # Label different topology
-    for topo_type, topo_df in figure_df.groupby('t'):
-        for x_value in topo_df[x_value_type].unique():
-            sub_df = topo_df[topo_df[x_value_type] == x_value]
-            max_y_row = sub_df[sub_df[x_value_type] == sub_df[x_value_type].max()].iloc[0]
-            plt.axvline(x=x_value, linestyle='--', color='gray', alpha=0.5)
-            plt.text(
-                x_value, max_y_row[y_value_type],
-                str(max_y_row['topo_name']),
-                verticalalignment='bottom',
-                horizontalalignment='center')
+    if 't' not in curve_option_keys:
+        for topo_type, topo_df in figure_df.groupby('t'):
+            for x_value in topo_df[x_value_type].unique():
+                sub_df = topo_df[topo_df[x_value_type] == x_value]
+                max_y_row = sub_df[sub_df[x_value_type] == sub_df[x_value_type].max()].iloc[0]
+                plt.axvline(x=x_value, linestyle='--', color='gray', alpha=0.5)
+                plt.text(
+                    x_value, max_y_row[y_value_type],
+                    str(max_y_row['topo_name']),
+                    verticalalignment='bottom',
+                    horizontalalignment='center')
 
     # for _, row in figure_df.iterrows():
     #     if row[x_scale] not in labeled_x_values:

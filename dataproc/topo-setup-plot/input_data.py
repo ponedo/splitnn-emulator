@@ -66,8 +66,9 @@ def get_clean_time(log_dirpath):
     with open(log_filepath, 'r') as file:
         log_content = file.read()
         clean_time = int(re.search(regex_patterns["clean_time"], log_content).group(1))
-    clean_time /= 1000 # convert millisecond to second
-    return clean_time
+        link_clean_time = int(re.search(regex_patterns["link_clean_time"], log_content).group(1))
+        node_clean_time = int(re.search(regex_patterns["node_clean_time"], log_content).group(1))
+    return link_clean_time, node_clean_time, clean_time
 
 
 def get_one_test_results(test_dirpath):
@@ -83,7 +84,7 @@ def get_one_test_results(test_dirpath):
         node_setup_time, link_setup_time, setup_time = get_setup_time(
             os.path.join(test_dirpath, server_dirname)
         )
-        clean_time = get_clean_time(
+        link_clean_time, node_clean_time, clean_time = get_clean_time(
             os.path.join(test_dirpath, server_dirname)
         )
         results["node_setup_time"] = \
@@ -93,9 +94,9 @@ def get_one_test_results(test_dirpath):
         results["setup_time"] = \
             max(results["setup_time"], setup_time)
         results["link_clean_time"] = \
-            max(results["link_clean_time"], node_setup_time)
+            max(results["link_clean_time"], link_clean_time)
         results["node_clean_time"] = \
-            max(results["node_clean_time"], link_setup_time)
+            max(results["node_clean_time"], node_clean_time)
         results["clean_time"] = \
             max(results["clean_time"], clean_time)
     return results
