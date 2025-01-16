@@ -73,39 +73,39 @@ func (lm *NtlBrLinkManager) SetupAndEnterBbNs() (netns.NsHandle, error) {
 }
 
 func (lm *NtlBrLinkManager) CleanAllBbNs() error {
-	var origNs, bbnsHandle netns.NsHandle
-	var err error
+	// var origNs, bbnsHandle netns.NsHandle
+	// var err error
 
-	origNs, err = netns.Get()
-	if err != nil {
-		fmt.Printf("failed to netns.Get of origNs: %s\n", err)
-		return err
-	}
+	// origNs, err = netns.Get()
+	// if err != nil {
+	// 	fmt.Printf("failed to netns.Get of origNs: %s\n", err)
+	// 	return err
+	// }
 
-	/* Disable bbns ipv6 */
-	bbnsNames := getAllBbNs()
-	for _, bbnsName := range bbnsNames {
-		bbnsHandle, err = netns.GetFromName(bbnsName)
-		if err != nil {
-			return fmt.Errorf("error when getting bbns handle, %v", err)
-		}
-		fmt.Printf("Disable ipv6 for bbns: %s\n", bbnsName)
-		err = netns.Set(bbnsHandle)
-		if err != nil {
-			fmt.Printf("failed to netns.Set to bbns: %s\n", err)
-			return err
-		}
-		err = disableIpv6ForCurNetns()
-		if err != nil {
-			fmt.Printf("failed to disableIpv6ForCurNetns for bbns: %s\n", err)
-			return err
-		}
-	}
-	err = netns.Set(origNs)
-	if err != nil {
-		fmt.Printf("failed to netns.Set to origNs: %s\n", err)
-		return err
-	}
+	// /* Disable bbns ipv6 */
+	// bbnsNames := getAllBbNs()
+	// for _, bbnsName := range bbnsNames {
+	// 	bbnsHandle, err = netns.GetFromName(bbnsName)
+	// 	if err != nil {
+	// 		return fmt.Errorf("error when getting bbns handle, %v", err)
+	// 	}
+	// 	fmt.Printf("Disable ipv6 for bbns: %s\n", bbnsName)
+	// 	err = netns.Set(bbnsHandle)
+	// 	if err != nil {
+	// 		fmt.Printf("failed to netns.Set to bbns: %s\n", err)
+	// 		return err
+	// 	}
+	// 	err = disableIpv6ForCurNetns()
+	// 	if err != nil {
+	// 		fmt.Printf("failed to disableIpv6ForCurNetns for bbns: %s\n", err)
+	// 		return err
+	// 	}
+	// }
+	// err = netns.Set(origNs)
+	// if err != nil {
+	// 	fmt.Printf("failed to netns.Set to origNs: %s\n", err)
+	// 	return err
+	// }
 
 	/* Destroy all netns */
 	destroyCommand := exec.Command(
