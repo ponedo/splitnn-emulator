@@ -4,6 +4,7 @@ from input_data import *
 from output_data import *
 from plot_utils import *
 from thread_pool import *
+from collections import OrderedDict
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Process results of a group of tests.")
@@ -89,7 +90,9 @@ if __name__ == "__main__":
     for x_value_type, y_value_type in product(x_value_types, y_value_types):
         # For each curve option tuple, how many option-specific figure-suite to draw? Combination of distinct fixed option values!
         for curve_option_keys in curve_options:
-            curve_option_keys = list(set(curve_option_keys) - set([x_value_type, y_value_type]))
+            curve_option_keys = sorted(list(
+                set(curve_option_keys) - set([x_value_type, y_value_type])
+            ))
             print(f"Plotting figure-suite set for curve option keys {curve_option_keys}...")
             # Create a directory for current figure-suite-set
             figure_suite_set_dir = os.path.join(
