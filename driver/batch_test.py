@@ -291,7 +291,7 @@ def exp_cmds_iterator(
         if BBNS_NUM_TEST:
             bbns_nums = generate_bbns_num_test_numbers(opts["t"])
             for bbns_num in bbns_nums:
-                opts_with_b = {"b": bbns_num, **opts}
+                opts_with_b = {**opts, "b": bbns_num}
                 yield yield_one_cmd(
                     opts_with_b, const_options, server_spec_options, server_config_list)
         else:
