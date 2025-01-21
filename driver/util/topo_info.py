@@ -1,50 +1,50 @@
 def get_isolated_node_num(n):
-    return n
+    return int(n)
 
 def get_isolated_link_num(n):
-    return 0
+    return int(0)
 
 def get_sudoisolated_node_num(l, n):
-    return n + 2
+    return int(n + 2)
 
 def get_sudoisolated_link_num(l, n):
-    return l
+    return int(l)
 
 def get_pairs_node_num(n):
-    return 2 * n
+    return int(2 * n)
 
 def get_pairs_link_num(n):
-    return n
+    return int(n)
 
 def get_chain_node_num(n):
-    return n
+    return int(n)
 
 def get_chain_link_num(n):
-    return n - 1
+    return int(n - 1)
 
 def get_star_node_num(n):
-    return n
+    return int(n)
 
 def get_star_link_num(n):
-    return n - 1
+    return int(n - 1)
 
 def get_fullmesh_node_num(n):
-    return n
+    return int(n)
 
 def get_fullmesh_link_num(n):
-    return n * (n - 1) / 2
+    return int(n * (n - 1) / 2)
 
 def get_trie_node_num(n, k):
-    return n
+    return int(n)
 
 def get_trie_link_num(n, k):
-    return n - 1
+    return int(n - 1)
 
 def get_grid_node_num(x, y):
-    return x * y
+    return int(x * y)
 
 def get_grid_link_num(x, y):
-    return 2 * x * y
+    return int(2 * x * y)
 
 def get_clos_node_num(k):
     return int((5 / 4) * (k ** 2) + (k ** 3) / 4)
@@ -56,7 +56,7 @@ def get_clos_link_num(k):
     leaf_num = (k // 2) * pod_num
     client_num = leaf_num * k
     link_num = ((superspine_num + spine_num + leaf_num) * k + client_num) / 2
-    return link_num
+    return int(link_num)
 
 topo_funcs = {
     "isolated": {

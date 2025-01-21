@@ -14,8 +14,8 @@ def list_factors(n):
     n = abs(n)  # Consider absolute value for factors
     for i in range(1, int(n**0.5) + 1):
         if n % i == 0:
-            factors.append(i)  # Add the divisor
+            factors.append(int(i))  # Add the divisor
             if i != n // i:
-                factors.append(n // i)  # Add the corresponding pair divisor
+                factors.append(int(n // i))  # Add the corresponding pair divisor
     factors.sort()
     return factors
