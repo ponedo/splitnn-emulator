@@ -218,6 +218,7 @@ func syncNtlk() error {
 		},
 	}
 	time.Sleep(2 * time.Second)
+	fmt.Printf("Probing for %d times...", testTime)
 	start = time.Now()
 	for i := 0; i < testTime; i += 1 {
 		err = netlink.LinkAdd(probeLink)
@@ -230,9 +231,11 @@ func syncNtlk() error {
 			fmt.Printf("failed to LinkDel: %s", err)
 			return err
 		}
-		end = time.Now()
-		fmt.Printf("Probe %d time: %dms\n", i, end.Sub(start).Milliseconds())
+		fmt.Printf(" %d", i)
 	}
+	end = time.Now()
+	fmt.Printf("\n")
+	fmt.Printf("Probe time: %dms\n", end.Sub(start).Milliseconds())
 
 	return nil
 }
