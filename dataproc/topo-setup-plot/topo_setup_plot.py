@@ -36,7 +36,7 @@ valid_y_values = [
 
 # Set how to process results
 curve_options = [
-    # (),
+    (),
     ("t",),
     # ("b",),
     # ("a",),
