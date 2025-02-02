@@ -67,7 +67,7 @@ def plot_one_figure(
                 output_dir, output_filename_prefix)
 
     # Label different topology
-    if 't' not in curve_option_keys:
+    if 't' not in curve_option_keys and x_value_type in ['node_num', 'link_num']:
         for topo_type, topo_df in figure_df.groupby('t'):
             for x_value in topo_df[x_value_type].unique():
                 sub_df = topo_df[topo_df[x_value_type] == x_value]

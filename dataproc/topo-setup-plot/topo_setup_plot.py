@@ -16,8 +16,9 @@ args = parser.parse_args()
 ###################### Plot options ######################
 # Plottable figure types
 valid_options = [
+    'topo_name', "t", 'b', 'a', 'd', 'N', 'l'
     # 't', 'b', 'a', 'd', 'N', 'l', 'p'
-    't', 'b', 'a', 'd', 'N', 'l'
+    # 't', 'b', 'a', 'd', 'N', 'l',
 ]
 valid_x_values = [
     'node_num',
@@ -35,9 +36,14 @@ valid_y_values = [
 ]
 
 # Set how to process results
+used_options = [
+    # 'topo_name', "t", 'b', 'a', 'd', 'N', 'l'
+    # "t", 'b', 'a', 'd', 'N', 'l'
+    'topo_name', 'b', 'a', 'd', 'N', 'l'
+]
 curve_options = [
     (),
-    ("t",),
+    # ("t",),
     # ("b",),
     # ("a",),
     # ("p",),
@@ -61,6 +67,11 @@ y_value_types = [
     'clean_time',
 ]
 
+valid_option_set = set(valid_options)
+used_option_set = set(used_options)
+if not valid_option_set | used_option_set == valid_option_set:
+    print(f"Used options ({used_option_set}) are not within valid options ({valid_option_set})")
+    exit(1)
 
 ###################### Main ######################
 
@@ -72,8 +83,8 @@ if __name__ == "__main__":
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir, exist_ok=True)
 
-    # Prepare thread pool
-    pool = ThreadPool(max_workers=5)
+    # # Prepare thread pool
+    # pool = ThreadPool(max_workers=5)
 
     # Read raw results from test_results_dir.
     # Then, store options, topo info, and test result data of all tests in a DataFrame
@@ -101,7 +112,7 @@ if __name__ == "__main__":
             
             # For each curve option tuple, options that are not curve options are fixed options.
             fixed_option_keys = sorted(list(
-                set(valid_options) - set(curve_option_keys) - set([x_value_type, y_value_type])
+                set(used_options) - set(curve_option_keys) - set([x_value_type, y_value_type])
             ))
 
             # Group by fixed options. Each group corresponds to a "figure-suite"
@@ -133,5 +144,5 @@ if __name__ == "__main__":
                     figure_suite_dir, args.overwrite
                 )
 
-    pool.wait_for_completion()
-    pool.shutdown()
+    # pool.wait_for_completion()
+    # pool.shutdown()
