@@ -169,16 +169,20 @@ func NetworkClean(
 	nm.Init()
 	lm.Init(nm)
 
+	edgeNum := g.GetEdgeNum()
+	extraTestTime := edgeNum / 50
+
 	startTime = time.Now()
 	lm.CleanAllBbNs()
-	syncNtlk()
+	syncNtlk(extraTestTime)
 	fmt.Printf("Clean bbns time: %.2fs\n", time.Since(startTime).Seconds())
+
 	startTime = time.Now()
 	for nodeId := range g.AdjacencyList {
 		// fmt.Printf("nodeId: %d\n", nodeId)
 		nm.CleanNode(nodeId)
 	}
-	syncNtlk()
+	syncNtlk(0)
 	fmt.Printf("Clean node time: %.2fs\n", time.Since(startTime).Seconds())
 
 	lm.Delete()
@@ -206,32 +210,49 @@ func disableIpv6ForCurNetns() error {
 	return nil
 }
 
-func syncNtlk() error {
+var probeLink *netlink.Dummy
+
+func probeNtlk() error {
+	var err error
+	err = netlink.LinkAdd(probeLink)
+	if err != nil {
+		fmt.Printf("failed to LinkAdd at : %s", err)
+		return err
+	}
+	err = netlink.LinkDel(probeLink)
+	if err != nil {
+		fmt.Printf("failed to LinkDel: %s", err)
+		return err
+	}
+	return err
+}
+
+func syncNtlk(extraTestTime int) error {
 	var err error
 	var start, end time.Time
 
 	/* Use multiple "ip link add test-link" to probe whether rtnl_lock is released by netns deletion */
+	extraTurnNum := (extraTestTime + 99) / 100
 	testTime := 100
-	probeLink := &netlink.Dummy{
+	probeLink = &netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: "probe-dummy",
 		},
 	}
 	time.Sleep(2 * time.Second)
-	fmt.Printf("Probing for %d times...", testTime)
+	fmt.Printf("Probing for %d (%d x %d) times...",
+		(1+extraTurnNum)*testTime, 1+extraTurnNum, testTime)
 	start = time.Now()
-	for i := 0; i < testTime; i += 1 {
-		err = netlink.LinkAdd(probeLink)
-		if err != nil {
-			fmt.Printf("failed to LinkAdd at : %s", err)
-			return err
+	for i := 0; i < 1+extraTurnNum; i += 1 {
+		for j := 0; j < testTime; j += 1 {
+			err = probeNtlk()
+			if err != nil {
+				fmt.Printf("failed to probNtlk: %s", err)
+				return err
+			}
+			fmt.Printf(" %d", j)
 		}
-		err = netlink.LinkDel(probeLink)
-		if err != nil {
-			fmt.Printf("failed to LinkDel: %s", err)
-			return err
-		}
-		fmt.Printf(" %d", i)
+		time.Sleep(2 * time.Second)
 	}
 	end = time.Now()
 	fmt.Printf("\n")
