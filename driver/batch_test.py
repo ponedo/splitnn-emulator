@@ -208,7 +208,7 @@ def prepare_topology(remote_machines, topos):
         topo_type = topo[0]
         full_topo_filename = get_full_topo_filename(topo)
         full_topo_filepath = os.path.join(DRIVER_WORKDIR, "topo", full_topo_filename)
-        generate_topo_type_script_path = os.path.join(DRIVER_WORKDIR, "scripts", f"generate_{topo_type}_topo.py")
+        generate_topo_type_script_path = os.path.join(DRIVER_WORKDIR, "scripts", "topo", f"generate_{topo_type}_topo.py")
         try:
             generate_topology_cmd = \
                 ["python3", generate_topo_type_script_path] + topo[1:] + [full_topo_filepath]
