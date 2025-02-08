@@ -86,6 +86,10 @@ var_options = {
         # ["trie", "7501", "10"],
         # ["trie", "8751", "10"],
         # ["trie", "10001", "10"],
+
+        ["as", "small"],
+        ["as", "medium"],
+        ["as", "large"],
     ],
 
     "b": [
@@ -247,7 +251,7 @@ def get_one_vn_manage_cmd(bin_path, operation, options):
 
 def generate_bbns_num_test_numbers(topo_args):
     topo_type = topo_args[0]
-    topo_data = [int(arg) for arg in topo_args[1:]]
+    topo_data = topo_args[1:]
     link_num = topo_funcs[topo_type]["get_link_num"](*topo_data)
     bbns_nums = list_factors(link_num)
     return bbns_nums
@@ -371,14 +375,14 @@ if __name__ == "__main__":
 
         # Execute test commands
         print(setup_commands)
-        execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-        time.sleep(15) # Wait for a while
+        # execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+        # time.sleep(15) # Wait for a while
         print(clean_commands)
-        execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
-        time.sleep(20) # Wait for a while
+        # execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+        # time.sleep(20) # Wait for a while
 
-        # Reap results of current test
-        reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
+        # # Reap results of current test
+        # reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
 
     # Close connection
     for remote_machine in remote_machines:
