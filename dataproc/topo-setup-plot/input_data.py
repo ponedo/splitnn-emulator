@@ -25,8 +25,10 @@ def parse_test_opts(test_dirname, valid_options):
                 print(f"Wrong option \"{k}\" in result dir name: {test_dirname}")
         else:
             v = ele
-            if k == "b":
+            try:
                 v = int(v)
+            except ValueError:
+                pass
             opts[k] = v
     return opts
 
@@ -117,7 +119,7 @@ def get_one_test_topo_info_and_results(
     return topo_and_results
 
 
-def get_all_data(test_results_dir, valid_options, x_value_types, y_value_types):
+def get_all_data(test_results_dir, valid_options, x_value_types, y_value_types, filter_values):
     columns = valid_options + x_value_types + y_value_types
     rows = []
 
@@ -131,7 +133,16 @@ def get_all_data(test_results_dir, valid_options, x_value_types, y_value_types):
         topo_and_results = get_one_test_topo_info_and_results(
             os.path.join(test_results_dir, test_dirname), opts)
         row.update(topo_and_results)
-        rows.append(row)
+        filtered_out = False
+        for filter_key, filter_value in filter_values.items():
+            try:
+                if not row[filter_key] == filter_value:
+                    filtered_out = True
+                    break
+            except KeyError:
+                pass
+        if not filtered_out:
+            rows.append(row)
 
     all_data_df = pd.DataFrame(rows)
 

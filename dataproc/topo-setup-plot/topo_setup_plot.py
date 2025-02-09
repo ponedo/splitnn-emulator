@@ -66,6 +66,9 @@ y_value_types = [
     'node_clean_time',
     'clean_time',
 ]
+filter_values = {
+    "b": 1
+}
 
 valid_option_set = set(valid_options)
 used_option_set = set(used_options)
@@ -90,7 +93,7 @@ if __name__ == "__main__":
     # Then, store options, topo info, and test result data of all tests in a DataFrame
     print("Reading raw results...")
     all_data_df = get_all_data(
-        args.test_results_dir, valid_options, x_value_types, y_value_types)
+        args.test_results_dir, valid_options, x_value_types, y_value_types, filter_values)
     
     # For each curve option key, a set of figure suites are generated
     # A figure suite corresponds to a set of fixed options
