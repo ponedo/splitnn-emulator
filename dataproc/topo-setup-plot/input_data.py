@@ -9,7 +9,7 @@ regex_patterns = {
     "node_setup_time": r"Node setup time:\s+(\d+)", # s
     "link_setup_time": r"Link setup time:\s+(\d+)", # s
     "setup_time": r"Network operation time:\s+(\d+)", # s
-    "link_clean_time": r"Clean bbns time:\s+(\d+)", # ms
+    "link_clean_time": r"Clean link time:\s+(\d+)", # ms
     "node_clean_time": r"Clean node time:\s+(\d+)", # ms
     "clean_time": r"Network operation time:\s+(\d+)", # ms
 }
