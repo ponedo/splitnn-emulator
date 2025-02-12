@@ -2,6 +2,7 @@ import os
 import sys
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 def parse_log(log_file, start_second, end_second):
     time_stamps = []
@@ -74,7 +75,7 @@ def smooth_outliers(data, lower_percentile, upper_percentile, window_size=5):
 
     print(f"\tglobal_lower_threshold: {global_lower_threshold}")
     print(f"\tglobal_upper_threshold: {global_upper_threshold}")
-    print(f"\traw_mean: {np.mean(global_upper_threshold)}")
+    print(f"\traw_mean: {np.mean(data)}")
     print(f"\tsmoothed_mean: {np.mean(smoothed_data)}")
     return smoothed_data
 
@@ -106,6 +107,18 @@ def plot_usage(time_stamps, cpu_user, cpu_kernel, cpu_total, mem_used, mem_total
     plt.savefig(os.path.join(output_dir, f"memory_usage_{file_suffix}.png"))
     plt.close()
 
+def output_csv(time_stamps, cpu_user, cpu_kernel, cpu_total, mem_used, mem_total, output_dir):
+    file_suffix = "_".join(sys.argv[3:])
+    df = pd.DataFrame({
+        "Timestamp": time_stamps,
+        "User CPU": cpu_user,
+        "Kernel CPU": cpu_kernel,
+        "Total CPU": cpu_total,
+        "Used Mem": mem_used,
+        "Total Mem": mem_total,
+    })
+    df.to_csv(os.path.join(output_dir, f"cpu_mem_usage_{file_suffix}.csv"), index=False)
+    
 def main():
     if len(sys.argv) != 8:
         print("Usage: python3 plot_usage.py <log_file_path> <output_dir> <start_second> <end_second> <window_size> <lower_percentile> <upper_percentile>")
@@ -132,7 +145,7 @@ def main():
     cpu_total = smooth_outliers(cpu_total, lower_percentile, upper_percentile, window_size)
     print(f"Reading Memory Used data")
     # mem_used = smooth_outliers(mem_used, lower_percentile, upper_percentile, window_size)
-
+    output_csv(time_stamps, cpu_user, cpu_kernel, cpu_total, mem_used, mem_total, output_dir)
     plot_usage(time_stamps, cpu_user, cpu_kernel, cpu_total, mem_used, mem_total, output_dir)
 
 if __name__ == "__main__":
