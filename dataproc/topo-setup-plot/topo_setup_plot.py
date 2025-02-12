@@ -67,7 +67,8 @@ y_value_types = [
     'clean_time',
 ]
 filter_values = {
-    "b": 1
+    # "b": 1,
+    "topo_name": ["grid_100_100", "clos_32", "as_large"]
 }
 
 valid_option_set = set(valid_options)

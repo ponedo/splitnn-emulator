@@ -136,7 +136,10 @@ def get_all_data(test_results_dir, valid_options, x_value_types, y_value_types, 
         filtered_out = False
         for filter_key, filter_value in filter_values.items():
             try:
-                if not row[filter_key] == filter_value:
+                if isinstance(filter_value, list) and not row[filter_key] in filter_value:
+                    filtered_out = True
+                    break
+                elif not isinstance(filter_value, list) and not row[filter_key] == filter_value:
                     filtered_out = True
                     break
             except KeyError:
