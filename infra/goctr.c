@@ -82,7 +82,7 @@ void redirect_stdout_stderr(const char *log_file_path) {
 
 void print_usage(const char *prog_name) {
     fprintf(stderr, "Usage:\n");
-    fprintf(stderr, "  %s run <base_dir> <hostname> <img_rootfs_dir> [--netns=<netns_path>] [--pid-file=<pid_file_path>] [-v]\n", prog_name);
+    fprintf(stderr, "  %s run <base_dir> <hostname> <img_rootfs_dir> [--netns=<netns_path>] [--pid-file=<pid_file_path>] [-V]\n", prog_name);
     fprintf(stderr, "  %s exec <pid> <cmdline...>\n", prog_name);
     fprintf(stderr, "  %s kill <pid>\n", prog_name);
     exit(EXIT_FAILURE);
@@ -123,6 +123,8 @@ int write_pid_to_file(const char *pid_file_path, int pid) {
 static int container_init(
     const char* newroot,
     const char* overlay_opt,
+    const char* volume_src,
+    const char* volume_tgt,
     const char* hostname,
     int err_fd
     ) {
@@ -147,6 +149,23 @@ static int container_init(
     if(chdir(newroot) != 0) {
         return child_err("chdir failed: ", err_fd);
     }
+
+    // change into newroot directory
+    if (volume_src != NULL && volume_tgt != NULL) {
+        // Check if the mount target directory exists in the container's filesystem
+        struct stat st;
+        if (stat(volume_tgt, &st) != 0) {
+            // Target directory doesn't exist, create it
+            if (mkdir(volume_tgt, 0755) != 0) {
+                return child_err("mkdir failed: ", err_fd);
+            }
+        }
+        // mount the volume inside the container's filesystem
+        if (mount(volume_src, volume_tgt, NULL, MS_PRIVATE|MS_BIND|MS_REC, NULL) != 0) {
+            return child_err("mount volume failed: ", err_fd);
+        }
+    }
+
     // pivot root
     // https://unix.stackexchange.com/questions/456620/how-to-perform-chroot-with-linux-namespaces
     if(syscall(SYS_pivot_root, ".", ".") != 0) {
@@ -161,6 +180,14 @@ static int container_init(
     // mount proc
     if(mount("proc", "/proc", "proc", MS_NOSUID|MS_NOEXEC|MS_NODEV, NULL) != 0) {
         return child_err("mount /proc failed: ", err_fd);
+    }
+    // mount sysfs
+    if (mount("sysfs", "/sys", "sysfs", MS_NOSUID|MS_NOEXEC, NULL) != 0) {
+        return child_err("mount /sys failed: ", err_fd);
+    }
+    // mount dev
+    if (mount("devtmpfs", "/dev", "devtmpfs", MS_NOSUID|MS_NOEXEC, NULL) != 0) {
+        return child_err("mount /dev failed: ", err_fd);
     }
     verbose_output_ts("rootfs_time");
 
@@ -229,6 +256,8 @@ int container_run_inner(
     const char *base_dir,
     const char *hostname,
     const char *img_rootfs_dir,
+    const char *volume_src,
+    const char *volume_tgt,
     const char *netns_path,
     char *chd_err, size_t max_len) {
     // 0755
@@ -306,7 +335,8 @@ int container_run_inner(
         } else if(pid == 0) {
             verbose_output_ts("fork2_time");
             close(event_fd);
-            exit(container_init(new_root, overlay_opt, hostname, err_fds[1]));
+            exit(container_init(new_root, overlay_opt,
+                volume_src, volume_tgt, hostname, err_fds[1]));
             // should not execute here
         }
         close(err_fds[1]);
@@ -382,6 +412,8 @@ int container_run(
     const char *base_dir,
     const char *hostname,
     const char *img_rootfs_dir,
+    const char *volume_src,
+    const char *volume_tgt,
     const char *netns_path) {
     char chd_err[256];
     int pid;
@@ -392,7 +424,9 @@ int container_run(
     }
 
     pid = container_run_inner(
-        base_dir, hostname, img_rootfs_dir, netns_path, chd_err, sizeof(chd_err) - 1);
+        base_dir, hostname, img_rootfs_dir,
+        volume_src, volume_tgt, netns_path,
+        chd_err, sizeof(chd_err) - 1);
     if (pid < 0) {
         fprintf(stderr, "Parent error: %s\n", chd_err);
         return -1;
@@ -451,6 +485,9 @@ int goctr_run(int argc, char *argv[]) {
     const char *base_dir = NULL;
     const char *hostname = NULL;
     const char *img_rootfs_dir = NULL;
+    const char *volume_opt = NULL;
+    const char *volume_src = NULL;
+    const char *volume_tgt = NULL;
     const char *netns_path = NULL;
     const char *pid_file_path = NULL;
     const char *log_file_path = NULL;
@@ -461,7 +498,17 @@ int goctr_run(int argc, char *argv[]) {
             netns_path = argv[i] + 8; // Extract the namespace path
         } else if (strncmp(argv[i], "--pid-file=", 11) == 0) {
             pid_file_path = argv[i] + 11; // Extract the pid file path
-        } else if (strncmp(argv[i], "-v", 2) == 0) {
+        } else if (strncmp(argv[i], "--volume=", 9) == 0) {
+            volume_opt = argv[i] + 9; // volume configuration
+            char *colon_pos = strchr(volume_opt, ':');
+            if (colon_pos != NULL) {
+                *colon_pos = '\0';
+                volume_src = volume_opt;
+                volume_tgt = colon_pos + 1;
+            } else {
+                fprintf(stderr, "Invalid volume option format. Expected 'src:tgt'\n");
+            }
+        } else if (strncmp(argv[i], "-V", 2) == 0) {
             verbose_mode = 1; // verbose mode, print time statistic
         } else if (strncmp(argv[i], "--log-file=", 11) == 0) {
             log_file_path = argv[i] + 11; // Extract the pid file path
@@ -478,7 +525,9 @@ int goctr_run(int argc, char *argv[]) {
     }
 
     verbose_output_ts("run_start_time");
-    pid = container_run(base_dir, hostname, img_rootfs_dir, netns_path);
+    pid = container_run(
+        base_dir, hostname, img_rootfs_dir,
+        volume_src, volume_tgt, netns_path);
     if (pid_file_path != NULL) {
         write_pid_to_file(pid_file_path, pid);
     }
@@ -530,7 +579,7 @@ int goctr_kill(int argc, char *argv[]) {
     for (int i = 0; i < argc; i++) {
         if (pid == 0) {
             pid = atoi(argv[i]);
-        } else if (strncmp(argv[i], "-v", 2) == 0) {
+        } else if (strncmp(argv[i], "-V", 2) == 0) {
             verbose_mode = 1; // verbose mode, print time statistic
         } else if (strncmp(argv[i], "--log-file=", 11) == 0) {
             log_file_path = argv[i] + 11; // Extract the pid file path

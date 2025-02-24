@@ -1,4 +1,3 @@
-!placeholder
 driver/topo/*.*
 driver/results*
 driver/METIS/
@@ -18,3 +17,7 @@ raw_results/
 perf*
 .vscode/
 __pycache__/
+!placeholder
+!infra/tmp/topo/test_topo
+!infra/tmp/mnt/
+!infra/tmp/exec_config.json

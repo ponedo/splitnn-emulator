@@ -20,7 +20,7 @@ func (nm *CctrNodeManager) Init() error {
 	nm.nodeId2Pid = make(map[int]int)
 	var err error
 	nm.nodeTmpDir = path.Join(TmpDir, "nodes")
-	if Operation == "setup" {
+	if Operation == "setup" || Operation == "node-measure" || Operation == "link-measure" {
 		err = os.RemoveAll(nm.nodeTmpDir)
 		if err != nil {
 			fmt.Printf("Error RemoveAll: %s\n", err)
@@ -51,15 +51,24 @@ func (nm *CctrNodeManager) SetupNode(nodeId int) error {
 	}
 	hostName := nodeName
 	pidFilePath := path.Join(baseDir, "pid.txt")
-	runLogFilePath := path.Join(baseDir, "run.log")
+	// runLogFilePath := path.Join(baseDir, "run.log")
 	pidFileArg := "--pid-file=" + pidFilePath
-	logFileArg := "--log-file=" + runLogFilePath
+	// logFileArg := "--log-file=" + runLogFilePath
 
 	// Setup command
-	SetupNodeCommand := exec.Command(
-		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-v", logFileArg)
 	// SetupNodeCommand := exec.Command(
-	// 	CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg)
+	// 	CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg, "-V", logFileArg)
+	SetupNodeCommand := exec.Command(
+		CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, pidFileArg)
+
+	volumeOpt, ok := VolumeOptMap[nodeId]
+	if ok {
+		volumeOpt = "--volume=" + volumeOpt
+		SetupNodeCommand = exec.Command(
+			CctrBinPath, "run", baseDir, hostName, ImageRootfsPath, volumeOpt, pidFileArg)
+	}
+
+	// Run the Command
 	SetupNodeCommand.Run()
 
 	pid, err = nm.getNodePid(nodeId)
@@ -92,8 +101,8 @@ func (nm *CctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {
 }
 
 func (nm *CctrNodeManager) CleanNode(nodeId int) error {
-	nodeName := "node" + strconv.Itoa(nodeId)
-	baseDir := path.Join(nm.nodeTmpDir, nodeName)
+	// nodeName := "node" + strconv.Itoa(nodeId)
+	// baseDir := path.Join(nm.nodeTmpDir, nodeName)
 
 	// Get pid
 	pid, err := nm.getNodePid(nodeId)
@@ -102,11 +111,13 @@ func (nm *CctrNodeManager) CleanNode(nodeId int) error {
 	}
 
 	// Create the kill log file
-	killLogFilePath := path.Join(baseDir, "kill.log")
-	logFileArg := "--log-file=" + killLogFilePath
+	// killLogFilePath := path.Join(baseDir, "kill.log")
+	// logFileArg := "--log-file=" + killLogFilePath
 
+	// KillNodeCommand := exec.Command(
+	// 	CctrBinPath, "kill", strconv.Itoa(pid), "-V", logFileArg)
 	KillNodeCommand := exec.Command(
-		CctrBinPath, "kill", strconv.Itoa(pid), "-v", logFileArg)
+		CctrBinPath, "kill", strconv.Itoa(pid))
 	KillNodeCommand.Run()
 	return nil
 }

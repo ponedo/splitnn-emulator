@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -16,6 +15,10 @@ import (
 
 	"github.com/vishvananda/netlink"
 )
+
+type Servers struct {
+	Servers []Server `json:"servers"`
+}
 
 type Server struct {
 	IPAddr             string     `json:"ipAddr"`
@@ -25,15 +28,36 @@ type Server struct {
 	KernFuncsToMonitor [][]string `json:"kernFuncsToMonitor"`
 }
 
-type Servers struct {
-	Servers []Server `json:"servers"`
+type Mnts struct {
+	Mnts []Mnt `json:"mnts"`
+}
+
+type Mnt struct {
+	NodeId    int    `json:"node_id"`
+	VolumeOpt string `json:"volume_opt"`
+}
+
+type ExecEntries struct {
+	Execs []ExecEntry `json:"exec_entries"`
+}
+
+type ExecEntry struct {
+	NodeId int  `json:"node_id"`
+	Ops    []Op `json:"ops"`
+}
+
+type Op struct {
+	Op   string   `json:"op"`
+	Args []string `json:"args"`
 }
 
 var (
 	Operation               string
 	ServerList              []Server
+	VolumeOptMap            map[int]string
 	LocalPhyIntf            string
 	LocalPhyIntfNl          netlink.Link
+	Execs                   ExecEntries
 	WorkDir                 string
 	TmpDir                  string
 	BinDir                  string
@@ -46,7 +70,7 @@ var (
 	CctrMonitorScriptPath   string
 	CctrMonitorOutputPath   string
 	CpuMemMonitorScriptPath string
-	CpuMemMonitorOutputPath string
+	CpuMemMonitorOutputDir  string
 	MonitorCmds             []*exec.Cmd
 	ImageRootfsPath         string
 	Parallel                int
@@ -73,11 +97,16 @@ func ConfigServers(confFileName string) error {
 	return nil
 }
 
-func ConfigEnvs(serverID int, operation string, disableIpv6 int, parallel int) error {
+func ConfigEnvs(
+	serverID int, operation string,
+	mntDir string, execConfigFile string,
+	disableIpv6 int, parallel int) error {
 	server := ServerList[serverID]
 	Operation = operation
 	setLocalPhyIntf(server.PhyIntf)
 	setEnvPaths(server.WorkDir, server.DockerImageName)
+	setMntConfig(mntDir)
+	setExecEntries(execConfigFile)
 	setDisableIpv6(disableIpv6)
 	setParallel(parallel)
 	setKernelPtySysctl()
@@ -111,10 +140,12 @@ func StartMonitor(serverID int, operation string, nmManagerType string) error {
 		if err != nil {
 			return err
 		}
-		err = startMonitorCpuMem()
-		if err != nil {
-			return err
-		}
+	}
+
+	/* Monitor CPU MEM usage */
+	err = startMonitorCpuMem(operation)
+	if err != nil {
+		return err
 	}
 
 	time.Sleep(2 * time.Second)
@@ -142,22 +173,22 @@ func StopMonitor(operation string) {
 
 func ArchiveCtrLog(operation string,
 	g *algo.Graph, nodeOrder []int, edgeOrder [][][4]int) error {
-	var srcLogName string
+	// var srcLogName string
 	var err error
 	archiveDirPath := CtrLogPath
 
-	if operation == "setup" {
-		srcLogName = "run.log"
-		err = os.RemoveAll(archiveDirPath)
-		if err != nil {
-			fmt.Printf("Error RemoveAll: %s\n", err)
-			return err
-		}
-	} else if operation == "clean" {
-		srcLogName = "kill.log"
-	} else {
-		return fmt.Errorf("invalid operation %s", operation)
-	}
+	// if operation == "setup" {
+	// 	srcLogName = "run.log"
+	// 	err = os.RemoveAll(archiveDirPath)
+	// 	if err != nil {
+	// 		fmt.Printf("Error RemoveAll: %s\n", err)
+	// 		return err
+	// 	}
+	// } else if operation == "clean" {
+	// 	srcLogName = "kill.log"
+	// } else {
+	// 	return fmt.Errorf("invalid operation %s", operation)
+	// }
 
 	/* Create node log archive dir */
 	err = os.MkdirAll(archiveDirPath, os.ModePerm)
@@ -166,32 +197,32 @@ func ArchiveCtrLog(operation string,
 		return err
 	}
 
-	/* Copy all log */
-	tmpTime := time.Now()
-	nodeNum := g.GetNodeNum()
-	reportTime := 10
-	nodePerReport := nodeNum / reportTime
-	for i, nodeId := range nodeOrder {
-		/* Progress reporter */
-		if nodePerReport > 0 && i%nodePerReport == 0 {
-			progress := 100 * i / nodeNum
-			curTime := time.Now()
-			fmt.Printf("%d%% nodes' log are archived, time elapsed from last report: %dms\n", progress, curTime.Sub(tmpTime).Milliseconds())
-			tmpTime = time.Now()
-		}
+	// /* Copy all log */
+	// tmpTime := time.Now()
+	// nodeNum := g.GetNodeNum()
+	// reportTime := 10
+	// nodePerReport := nodeNum / reportTime
+	// for i, nodeId := range nodeOrder {
+	// 	/* Progress reporter */
+	// 	if nodePerReport > 0 && i%nodePerReport == 0 {
+	// 		progress := 100 * i / nodeNum
+	// 		curTime := time.Now()
+	// 		fmt.Printf("%d%% nodes' log are archived, time elapsed from last report: %dms\n", progress, curTime.Sub(tmpTime).Milliseconds())
+	// 		tmpTime = time.Now()
+	// 	}
 
-		/* Copy log */
-		nodeTmpDir := path.Join(TmpDir, "nodes")
-		nodeBaseDirPath := "node" + strconv.Itoa(nodeId)
-		dstLogName := srcLogName + "." + strconv.Itoa(i)
-		srcLogPath := path.Join(nodeTmpDir, nodeBaseDirPath, srcLogName)
-		dstLogPath := path.Join(archiveDirPath, dstLogName)
-		err = copyFile(srcLogPath, dstLogPath)
-		if err != nil {
-			fmt.Printf("Error copyFile: %s\n", err)
-			return err
-		}
-	}
+	// 	/* Copy log */
+	// 	nodeTmpDir := path.Join(TmpDir, "nodes")
+	// 	nodeBaseDirPath := "node" + strconv.Itoa(nodeId)
+	// 	dstLogName := srcLogName + "." + strconv.Itoa(i)
+	// 	srcLogPath := path.Join(nodeTmpDir, nodeBaseDirPath, srcLogName)
+	// 	dstLogPath := path.Join(archiveDirPath, dstLogName)
+	// 	err = copyFile(srcLogPath, dstLogPath)
+	// 	if err != nil {
+	// 		fmt.Printf("Error copyFile: %s\n", err)
+	// 		return err
+	// 	}
+	// }
 
 	return nil
 }
@@ -213,12 +244,66 @@ func setEnvPaths(workDir string, dockerImageName string) {
 	CctrMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cctr_time.sh")
 	CctrMonitorOutputPath = path.Join(TmpDir, "cctr_time.txt")
 	CpuMemMonitorScriptPath = path.Join(WorkDir, "scripts", "monitor_cpu_mem_usage.py")
-	CpuMemMonitorOutputPath = path.Join(TmpDir, "cpu_mem_usage.txt")
+	CpuMemMonitorOutputDir = TmpDir
 
 	splitedImageName := strings.Split(dockerImageName, ":")
 	ImageRepo := splitedImageName[0]
-	ImageTag := splitedImageName[1]
+	ImageTag := "latest"
+	if len(splitedImageName) > 1 {
+		ImageTag = splitedImageName[1]
+	}
 	ImageRootfsPath = path.Join(TmpDir, "img_bundles", ImageRepo, ImageTag, "rootfs")
+}
+
+func setMntConfig(mntDir string) error {
+	if mntDir == "" {
+		return nil
+	}
+
+	mntConfFileName := path.Join(mntDir, "mnt_config.json")
+
+	// Read the JSON file
+	jsonFile, err := os.ReadFile(mntConfFileName)
+	if err != nil {
+		log.Fatalf("Error reading the JSON file: %v", err)
+	}
+
+	var mntConfig Mnts
+
+	// Parse JSON into the struct
+	err = json.Unmarshal(jsonFile, &mntConfig)
+	if err != nil {
+		return fmt.Errorf("error parsing JSON: %v", err)
+	}
+
+	// Register volume info
+	VolumeOptMap = make(map[int]string)
+	for _, mnt := range mntConfig.Mnts {
+		VolumeOptMap[mnt.NodeId] = mnt.VolumeOpt
+	}
+	return nil
+}
+
+func setExecEntries(execConfigFile string) error {
+	if execConfigFile == "" {
+		return nil
+	}
+
+	// Read the JSON file
+	jsonFile, err := os.ReadFile(execConfigFile)
+	if err != nil {
+		log.Fatalf("Error reading the JSON file: %v", err)
+	}
+
+	var execEntries ExecEntries
+
+	// Parse JSON into the struct
+	err = json.Unmarshal(jsonFile, &execEntries)
+	if err != nil {
+		return fmt.Errorf("error parsing JSON: %v", err)
+	}
+
+	return nil
 }
 
 func setDisableIpv6(disableIpv6 int) {
@@ -267,12 +352,19 @@ func setKernelPtySysctl() {
 }
 
 func prepareRootfs(dockerImageName string) {
+	splitedImageName := strings.Split(dockerImageName, ":")
+	ImageRepo := splitedImageName[0]
+	ImageTag := "latest"
+	if len(splitedImageName) > 1 {
+		ImageTag = splitedImageName[1]
+	}
+	dockerImageName = ImageRepo + ":" + ImageTag
+
 	prepareScriptPath := path.Join(WorkDir, "scripts", "prepare_rootfs.sh")
+	fmt.Printf("prepareScriptPath: %s\n", prepareScriptPath)
 	fmt.Printf("dockerImageName: %s\n", dockerImageName)
 	prepareCommand := exec.Command(
-		prepareScriptPath, dockerImageName)
-	prepareCommand.Stdout = os.Stdout
-	prepareCommand.Stderr = os.Stderr
+		"bash", prepareScriptPath, dockerImageName)
 	prepareCommand.Run()
 }
 
@@ -348,7 +440,8 @@ func startMonitorCctr() error {
 	return nil
 }
 
-func startMonitorCpuMem() error {
+func startMonitorCpuMem(operation string) error {
+	CpuMemMonitorOutputPath := path.Join(CpuMemMonitorOutputDir, operation+"_cpu_mem_usage.txt")
 	monitorCmd := exec.Command(
 		"python3", "-u", CpuMemMonitorScriptPath, CpuMemMonitorOutputPath)
 	if err := monitorCmd.Start(); err != nil {

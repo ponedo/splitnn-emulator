@@ -21,22 +21,27 @@ var args struct {
 	BackboneNsNum    int
 	Algorithm        string
 	Topofile         string
+	MntDir           string
+	ExecConfigFile   string
 	LinkManagerType  string
 	NodeManagerType  string
 	DisableIpv6      int
 	Parallel         int
 	ServerConfigFile string
 	ServerID         int
+	S                int
+	P                int
+	Q                int
 }
 
 func parseArgs() {
 	/* Parse arguments */
 	// flag.StringVar(
 	// 	&args.Operation, "operation", "",
-	// 	"Operation [setup|clean]")
+	// 	"Operation [setup|clean|exec|node-measure|link-measure]")
 	flag.StringVar(
 		&args.Operation, "o", "",
-		"Operation [setup|clean]")
+		"Operation [setup|clean|exec|node-measure|link-measure]")
 	// flag.IntVar(
 	// 	&args.BackboneNsNum, "bb-ns-num", 1,
 	// 	"# of backbone network namespaces")
@@ -47,7 +52,7 @@ func parseArgs() {
 	// 	&args.Algorithm, "algo", "",
 	// 	"Interleave algorithm [naive|degree|dynamic|weighted_dynamic|best_weighted_dynamic]")
 	flag.StringVar(
-		&args.Algorithm, "a", "",
+		&args.Algorithm, "a", "naive",
 		"Interleave algorithm [naive|degree|dynamic|weighted_dynamic|best_weighted_dynamic]")
 	// flag.StringVar(
 	// 	&args.Topofile, "topofile", "",
@@ -56,16 +61,28 @@ func parseArgs() {
 		&args.Topofile, "t", "",
 		"Name of topology file")
 	// flag.StringVar(
-	// 	&args.LinkManagerType, "link-manager", "",
+	// 	&args.MntDir, "mntdir", "",
+	// 	"Path of volumes to be mounted")
+	flag.StringVar(
+		&args.MntDir, "m", "",
+		"Path of volumes to be mounted")
+	// flag.StringVar(
+	// 	&args.ExecConfigFile, "exec", "",
+	// 	"Path of exec_config.json (only useful with \"-o exec\")")
+	flag.StringVar(
+		&args.ExecConfigFile, "e", "",
+		"Path of exec_config.json (only useful with \"-o exec\")")
+	// flag.StringVar(
+	// 	&args.LinkManagerType, "link-manager", "ntlbr",
 	// 	"Type of link manager [ntlbr]")
 	flag.StringVar(
-		&args.LinkManagerType, "l", "",
+		&args.LinkManagerType, "l", "ntlbr",
 		"Type of link manager [ntlbr]")
 	// flag.StringVar(
-	// 	&args.NodeManagerType, "node-mamager", "",
+	// 	&args.NodeManagerType, "node-mamager", "cctr",
 	// 	"Type of node manager [cctr]")
 	flag.StringVar(
-		&args.NodeManagerType, "N", "",
+		&args.NodeManagerType, "N", "cctr",
 		"Type of node manager [cctr]")
 	// flag.IntVar(
 	// 	&args.DisableIpv6, "disable-ipv6", 0,
@@ -80,10 +97,10 @@ func parseArgs() {
 		&args.Parallel, "p", 0,
 		"Whether use parallel link setup")
 	// flag.StringVar(
-	// 	&args.ServerConfigFile, "server-file", "",
+	// 	&args.ServerConfigFile, "server-file", "tmp/server_config.json",
 	// 	"Name of server config file")
 	flag.StringVar(
-		&args.ServerConfigFile, "s", "",
+		&args.ServerConfigFile, "s", "tmp/server_config.json",
 		"Name of server config file")
 	// flag.IntVar(
 	// 	&args.ServerID, "server-id", 0,
@@ -91,21 +108,48 @@ func parseArgs() {
 	flag.IntVar(
 		&args.ServerID, "i", 0,
 		"ID of current server in server-file")
+
+	flag.IntVar(
+		&args.S, "S", 0,
+		"Argument S for measure operation")
+	flag.IntVar(
+		&args.P, "P", 0,
+		"Argument P for measure operation")
+	flag.IntVar(
+		&args.Q, "Q", 0,
+		"Argument Q for measure operation")
 	flag.Parse()
 
 	/* Check whether args are valid */
-	if args.Operation == "" {
-		fmt.Println("Please notify OPERATION")
+	if args.Operation == "setup" || args.Operation == "clean" {
+		if args.Algorithm == "" {
+			fmt.Println("Please notify ALGORITHM")
+			os.Exit(1)
+		}
+		if args.Topofile == "" {
+			fmt.Println("Please notify TOPOFILE")
+			os.Exit(1)
+		}
+	} else if args.Operation == "node-measure" || args.Operation == "link-measure" {
+		if args.S == 0 {
+			fmt.Println("Please notify argument S")
+			os.Exit(1)
+		}
+		if args.P == 0 {
+			fmt.Println("Please notify argument P")
+			os.Exit(1)
+		}
+		if args.Operation == "node-measure" {
+			if args.Q == 0 {
+				fmt.Println("Please notify argument Q")
+				os.Exit(1)
+			}
+		}
+	} else {
+		fmt.Printf("Invalid OPERATION %s\n", args.Operation)
 		os.Exit(1)
 	}
-	if args.Algorithm == "" {
-		fmt.Println("Please notify ALGORITHM")
-		os.Exit(1)
-	}
-	if args.Topofile == "" {
-		fmt.Println("Please notify TOPOFILE")
-		os.Exit(1)
-	}
+
 	if args.LinkManagerType == "" {
 		fmt.Println("Please notify LINK_MANAGER")
 		os.Exit(1)
@@ -230,7 +274,10 @@ func main() {
 		goto clean
 	}
 	redirectOutput(network.ServerList[args.ServerID].WorkDir, args.Operation)
-	err = network.ConfigEnvs(args.ServerID, args.Operation, args.DisableIpv6, args.Parallel)
+	err = network.ConfigEnvs(
+		args.ServerID, args.Operation,
+		args.MntDir, args.ExecConfigFile,
+		args.DisableIpv6, args.Parallel)
 	if err != nil {
 		goto clean
 	}
@@ -240,59 +287,61 @@ func main() {
 	}
 
 	/* Initialize graph file */
-	graph, err = algo.ReadGraphFromFile(args.Topofile)
-	if err != nil {
-		fmt.Printf("Error reading graph: %v\n", err)
-		return
-	}
-
-	/* Compute interleaving node/link setup order */
-	start = time.Now()
-	switch args.Algorithm {
-	case "naive":
-		nodeOrder, edgeOrder, curEdgeNumSeq = graph.NaiveOrder()
-	case "degree":
-		nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderDegree()
-	case "dynamic":
-		nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderDynamic()
-	case "weighted_dynamic":
-		nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderWeightedDynamic()
-	case "best_weighted_dynamic":
-		nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderBestWeightedDynamic()
-	default:
-		fmt.Printf("Invalid network algorithm: %v.\n", args.Algorithm)
-		return
-	}
-	if args.Operation == "clean" {
-		// Reverse the order slices along the first dimension
-		left, right := 0, len(nodeOrder)-1
-		for left < right {
-			nodeOrder[left], nodeOrder[right] = nodeOrder[right], nodeOrder[left]
-			edgeOrder[left], edgeOrder[right] = edgeOrder[right], edgeOrder[left]
-			left++
-			right--
+	if args.Operation == "setup" || args.Operation == "clean" {
+		graph, err = algo.ReadGraphFromFile(args.Topofile)
+		if err != nil {
+			fmt.Printf("Error reading graph: %v\n", err)
+			return
 		}
-	}
 
-	/* Calculate accumulation of nodes */
-	accNodeNum = 0
-	for nodeNum := range curEdgeNumSeq {
-		if nodeNum == 0 {
-			continue
+		/* Compute interleaving node/link setup order */
+		start = time.Now()
+		switch args.Algorithm {
+		case "naive":
+			nodeOrder, edgeOrder, curEdgeNumSeq = graph.NaiveOrder()
+		case "degree":
+			nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderDegree()
+		case "dynamic":
+			nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderDynamic()
+		case "weighted_dynamic":
+			nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderWeightedDynamic()
+		case "best_weighted_dynamic":
+			nodeOrder, edgeOrder, curEdgeNumSeq = graph.MaximizeEdgesOrderBestWeightedDynamic()
+		default:
+			fmt.Printf("Invalid network algorithm: %v.\n", args.Algorithm)
+			return
 		}
-		accNodeNum += nodeNum * (curEdgeNumSeq[nodeNum] - curEdgeNumSeq[nodeNum-1])
+		if args.Operation == "clean" {
+			// Reverse the order slices along the first dimension
+			left, right := 0, len(nodeOrder)-1
+			for left < right {
+				nodeOrder[left], nodeOrder[right] = nodeOrder[right], nodeOrder[left]
+				edgeOrder[left], edgeOrder[right] = edgeOrder[right], edgeOrder[left]
+				left++
+				right--
+			}
+		}
+
+		/* Calculate accumulation of nodes */
+		accNodeNum = 0
+		for nodeNum := range curEdgeNumSeq {
+			if nodeNum == 0 {
+				continue
+			}
+			accNodeNum += nodeNum * (curEdgeNumSeq[nodeNum] - curEdgeNumSeq[nodeNum-1])
+		}
+		fmt.Println("Node Order:", nodeOrder)
+		fmt.Println("Edge Order:", edgeOrder)
+		fmt.Println("curEdgeNumSeq:", curEdgeNumSeq)
+		fmt.Println("accNodeNum:", accNodeNum)
+		end = time.Now()
+		fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
+		edgeSum = 0
+		for _, edgeOrderElement := range edgeOrder {
+			edgeSum += len(edgeOrderElement)
+		}
+		fmt.Println("edgeSum:", edgeSum)
 	}
-	fmt.Println("Node Order:", nodeOrder)
-	fmt.Println("Edge Order:", edgeOrder)
-	fmt.Println("curEdgeNumSeq:", curEdgeNumSeq)
-	fmt.Println("accNodeNum:", accNodeNum)
-	end = time.Now()
-	fmt.Printf("Plan time: %.2fs\n", end.Sub(start).Seconds())
-	edgeSum = 0
-	for _, edgeOrderElement := range edgeOrder {
-		edgeSum += len(edgeOrderElement)
-	}
-	fmt.Println("edgeSum:", edgeSum)
 
 	/* Prepare link and node managers */
 	switch args.LinkManagerType {
@@ -328,6 +377,15 @@ func main() {
 			linkManager, nodeManager,
 			graph, nodeOrder, edgeOrder,
 			args.BackboneNsNum)
+	case "exec":
+		err = network.NetworkExec(
+			linkManager, nodeManager)
+	case "node-measure":
+		err = network.NodeMeasure(
+			linkManager, nodeManager, args.S, args.P, args.Q)
+	case "link-measure":
+		err = network.LinkMeasure(
+			linkManager, nodeManager, args.S, args.P)
 	}
 	if err != nil {
 		fmt.Printf("Error: %v.\n", err)
