@@ -34,7 +34,6 @@ int verbose_mode = 0;
         } \
     } while (0)
 
-
 static void verbose_output_ts(const char *ts_name) {
     struct timespec ts;
     uint64_t ts_value;
@@ -44,7 +43,6 @@ static void verbose_output_ts(const char *ts_name) {
         VERBOSE_OUTPUT("%s: %lu ns\n", ts_name, ts_value);
     }
 }
-
 
 void set_realtime_priority(int priority) {
     struct sched_param param;
@@ -57,7 +55,6 @@ void set_realtime_priority(int priority) {
     }
 }
 
-
 void pin_to_cpu(int cpu) {
     cpu_set_t cpuset;
     CPU_ZERO(&cpuset);
@@ -68,6 +65,37 @@ void pin_to_cpu(int cpu) {
     }
 }
 
+int mkdir_p(const char *path, mode_t mode) {
+    char *temp = strdup(path);
+    char *pos = temp;
+    int ret = 0;
+
+    // Handle edge cases
+    if (path == NULL || path[0] == '\0') {
+        free(temp);
+        return -1;
+    }
+
+    // Iterate through the path, creating directories as needed
+    while ((pos = strchr(pos, '/')) != NULL) {
+        *pos = '\0';
+        fprintf(stderr, "mkdir_p target 2: %s, temp: %s, ret: %d\n", path, temp, ret);
+        if (*temp != '\0' && mkdir(temp, mode) != 0 && errno != EEXIST) {
+            ret = -1;
+            break;
+        }
+        *pos = '/';
+        pos++;
+    }
+
+    // Create the final directory (after the last '/')
+    if (ret == 0 && mkdir(temp, mode) != 0 && errno != EEXIST) {
+        ret = -1;
+    }
+
+    free(temp);
+    return ret;
+}
 
 void redirect_stdout_stderr(const char *log_file_path) {
     // Redirect stderr to the file (overwrite mode)
@@ -78,7 +106,6 @@ void redirect_stdout_stderr(const char *log_file_path) {
         fprintf(stderr, "Error: Could not redirect stderr to %s.\n", log_file_path);
     }
 }
-
 
 void print_usage(const char *prog_name) {
     fprintf(stderr, "Usage:\n");
@@ -146,24 +173,41 @@ static int container_init(
         return child_err("mount rprivate newroot failed: ", err_fd);
     }
 
+    char abs_volume_src[4096]; 
+    if (volume_src != NULL && volume_tgt != NULL) {
+        // Get absolute path of volume source directory
+        if (realpath(volume_src, abs_volume_src) == NULL) {
+            return child_err("non-existent volume_src: ", err_fd);
+        }
+    }
+
     if(chdir(newroot) != 0) {
         return child_err("chdir failed: ", err_fd);
     }
 
     // change into newroot directory
     if (volume_src != NULL && volume_tgt != NULL) {
+        // Check validity of volume target directory
+        if (volume_tgt[0] != '/' || strlen(volume_tgt) < 1) {
+            return child_err("Invalid volume_tgt (%s), should start with \'/\' and len >- 1", err_fd);
+        }
+        const char *rel_volume_tgt = volume_tgt + 1;
+
         // Check if the mount target directory exists in the container's filesystem
         struct stat st;
-        if (stat(volume_tgt, &st) != 0) {
+        if (stat(rel_volume_tgt, &st) != 0) {
             // Target directory doesn't exist, create it
-            if (mkdir(volume_tgt, 0755) != 0) {
+            if (mkdir_p(rel_volume_tgt, 0755) != 0) {
                 return child_err("mkdir failed: ", err_fd);
             }
         }
+
         // mount the volume inside the container's filesystem
-        if (mount(volume_src, volume_tgt, NULL, MS_PRIVATE|MS_BIND|MS_REC, NULL) != 0) {
+        if (mount(abs_volume_src, rel_volume_tgt, NULL, MS_PRIVATE|MS_BIND|MS_REC, NULL) != 0) {
             return child_err("mount volume failed: ", err_fd);
         }
+        // fprintf(stderr, "mount abs_volume_src: %s\n", abs_volume_src);
+        // fprintf(stderr, "mount rel_volume_tgt: %s\n", rel_volume_tgt);
     }
 
     // pivot root
