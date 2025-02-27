@@ -16,6 +16,7 @@ type NodeManager interface {
 	SetupNode(int) error
 	GetNodeNetNs(int) (netns.NsHandle, error)
 	CleanNode(int) error
+	NodeExec(int, []string) error
 }
 
 type LinkManager interface {

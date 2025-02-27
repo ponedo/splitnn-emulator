@@ -1,3 +1,5 @@
+driver/mnt/
+driver/exec_config.json
 driver/topo/*.*
 driver/results*
 driver/METIS/
@@ -19,5 +21,5 @@ perf*
 __pycache__/
 !placeholder
 !infra/tmp/topo/test_topo
-!infra/tmp/mnt/
-!infra/tmp/exec_config.json
+!infra/tmp/test_mnt/
+!infra/tmp/test_exec_config.json

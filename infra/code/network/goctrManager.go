@@ -163,6 +163,28 @@ func (nm *GoctrNodeManager) CleanNode(nodeId int) error {
 	return nil
 }
 
+func (nm *GoctrNodeManager) NodeExec(nodeId int, args []string) error {
+	pid, err := nm.getNodePid(nodeId)
+	if err != nil {
+		return err
+	}
+
+	execArgs := append([]string{"exec", strconv.Itoa(pid)}, args...)
+	cArgs := make([]*C.char, len(execArgs))
+	for i, arg := range execArgs {
+		cArgs[i] = C.CString(arg)
+		defer C.free(unsafe.Pointer(cArgs[i])) // Free memory after usage
+	}
+	argc := C.int(len(execArgs))
+	cRet := C.goctr_kill(argc, &cArgs[0])
+	ret := int(cRet)
+	if ret < 0 {
+		return fmt.Errorf("goctr_exec for node %d failed", nodeId)
+	}
+
+	return nil
+}
+
 func (nm *GoctrNodeManager) getNodePid(nodeId int) (int, error) {
 	pid := -1
 

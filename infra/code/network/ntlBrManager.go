@@ -130,7 +130,7 @@ func (lm *NtlBrLinkManager) SetupLink(nodeIdi int, nodeIdj int, serverID int, vx
 func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
 	var backboneNs, nodeiNetNs, nodejNetNs netns.NsHandle
-	var brName string
+	var brName, vethNamei, vethNamej, insideVethNamei, insideVethNamej string
 
 	/* Prepare network namespace handles */
 	backboneNs = lm.curBackBoneNs
@@ -150,9 +150,19 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 		lm.curlinkNumMutex.Lock()
 	}
 	lm.curlinkNum += 1
-	brName = "br-" + strconv.Itoa(lm.curlinkNum)
-	vethNamei := "eth-" + strconv.Itoa(lm.curlinkNum) + "-i"
-	vethNamej := "eth-" + strconv.Itoa(lm.curlinkNum) + "-j"
+
+	insideVethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	insideVethNamej = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+	if nodeIdi < nodeIdj {
+		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		vethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-i"
+		vethNamej = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-j"
+	} else {
+		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		vethNamei = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-i"
+		vethNamej = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-j"
+	}
+
 	if Parallel > 0 {
 		lm.curlinkNumMutex.Unlock()
 	}
@@ -170,7 +180,7 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 			Flags: net.FlagUp,
 			// MasterIndex: br.Index,
 		},
-		PeerName:      vethNamei,
+		PeerName:      insideVethNamei,
 		PeerNamespace: netlink.NsFd(nodeiNetNs),
 	}
 	vethOutj := &netlink.Veth{
@@ -180,17 +190,17 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 			Flags: net.FlagUp,
 			// MasterIndex: br.Index,
 		},
-		PeerName:      vethNamej,
+		PeerName:      insideVethNamej,
 		PeerNamespace: netlink.NsFd(nodejNetNs),
 	}
 	vethIni := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: vethNamei,
+			Name: insideVethNamei,
 		},
 	}
 	vethInj := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: vethNamej,
+			Name: insideVethNamej,
 		},
 	}
 
@@ -239,6 +249,7 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
 	var backboneNs, nodeiNetNs netns.NsHandle
+	var brName, vxlanName, vethNamei, insideVethNamei string
 
 	/* Prepare network namespace handles */
 	backboneNs = lm.curBackBoneNs
@@ -252,9 +263,18 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	if Parallel > 0 {
 		lm.curlinkNumMutex.Lock()
 	}
-	brName := "br-" + strconv.Itoa(lm.curlinkNum)
-	vxlanName := "eth-" + strconv.Itoa(lm.curlinkNum) + "-v"
-	vethNamei := "vxl-" + strconv.Itoa(lm.curlinkNum)
+
+	insideVethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	if nodeIdi < nodeIdj {
+		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		vxlanName = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-v"
+		vethNamei = "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	} else {
+		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		vxlanName = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-v"
+		vethNamei = "vxl-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+	}
+
 	if Parallel > 0 {
 		lm.curlinkNumMutex.Unlock()
 	}
@@ -287,12 +307,12 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 			Flags: net.FlagUp,
 			// MasterIndex: br.Index,
 		},
-		PeerName:      vethNamei,
+		PeerName:      insideVethNamei,
 		PeerNamespace: netlink.NsFd(nodeiNetNs),
 	}
 	vethIni := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: vethNamei,
+			Name: insideVethNamei,
 		},
 	}
 

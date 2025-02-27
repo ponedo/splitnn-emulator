@@ -97,10 +97,10 @@ func parseArgs() {
 		&args.Parallel, "p", 0,
 		"Whether use parallel link setup")
 	// flag.StringVar(
-	// 	&args.ServerConfigFile, "server-file", "tmp/server_config.json",
+	// 	&args.ServerConfigFile, "server-file", "server_config.json",
 	// 	"Name of server config file")
 	flag.StringVar(
-		&args.ServerConfigFile, "s", "tmp/server_config.json",
+		&args.ServerConfigFile, "s", "server_config.json",
 		"Name of server config file")
 	// flag.IntVar(
 	// 	&args.ServerID, "server-id", 0,
@@ -112,7 +112,7 @@ func parseArgs() {
 	flag.Parse()
 
 	/* Check whether args are valid */
-	if args.Operation == "setup" || args.Operation == "clean" {
+	if args.Operation == "setup" || args.Operation == "clean" || args.Operation == "exec" {
 		if args.Algorithm == "" {
 			fmt.Println("Please notify ALGORITHM")
 			os.Exit(1)

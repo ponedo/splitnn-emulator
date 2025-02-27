@@ -91,7 +91,11 @@ func (nm *CctrNodeManager) GetNodeNetNs(nodeId int) (netns.NsHandle, error) {
 
 	pid, ok = nm.nodeId2Pid[nodeId]
 	if !ok {
-		return nodeNetns, fmt.Errorf("trying to get a non-exist netns (node #%d)", nodeId)
+		pid, err = nm.getNodePid(nodeId)
+		if err != nil {
+			fmt.Printf("Failed to get pid of node #%d: %s\n", nodeId, err)
+			return -1, err
+		}
 	}
 	nodeNetns, err = netns.GetFromPid(pid)
 	if err != nil {
@@ -119,6 +123,20 @@ func (nm *CctrNodeManager) CleanNode(nodeId int) error {
 	KillNodeCommand := exec.Command(
 		CctrBinPath, "kill", strconv.Itoa(pid))
 	KillNodeCommand.Run()
+	return nil
+}
+
+func (nm *CctrNodeManager) NodeExec(nodeId int, args []string) error {
+	pid, err := nm.getNodePid(nodeId)
+	if err != nil {
+		return err
+	}
+
+	execArgs := append([]string{"exec", strconv.Itoa(pid)}, args...)
+	NodeExecCommand := exec.Command(
+		CctrBinPath, execArgs...)
+	NodeExecCommand.Run()
+
 	return nil
 }
 

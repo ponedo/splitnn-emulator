@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -279,7 +280,16 @@ func setMntConfig(mntDir string) error {
 	// Register volume info
 	VolumeOptMap = make(map[int]string)
 	for _, mnt := range mntConfig.Mnts {
-		VolumeOptMap[mnt.NodeId] = mnt.VolumeOpt
+		nodeId := mnt.NodeId
+		splitedVolumeOpt := strings.Split(mnt.VolumeOpt, ":")
+		srcDir := splitedVolumeOpt[0]
+		dstDir := splitedVolumeOpt[1]
+		srcDir = path.Join(mntDir, "node"+strconv.Itoa(nodeId), srcDir)
+		if err != nil {
+			return fmt.Errorf("Failed to resolve mount src dir:", err)
+		}
+		newVolumeOpt := srcDir + ":" + dstDir
+		VolumeOptMap[mnt.NodeId] = newVolumeOpt
 	}
 	return nil
 }
@@ -295,10 +305,8 @@ func setExecEntries(execConfigFile string) error {
 		log.Fatalf("Error reading the JSON file: %v", err)
 	}
 
-	var execEntries ExecEntries
-
 	// Parse JSON into the struct
-	err = json.Unmarshal(jsonFile, &execEntries)
+	err = json.Unmarshal(jsonFile, &Execs)
 	if err != nil {
 		return fmt.Errorf("error parsing JSON: %v", err)
 	}
@@ -314,7 +322,7 @@ func setParallel(parallel int) {
 	Parallel = parallel
 }
 
-func setSysctlValue(path string, value string) error {
+func SetSysctlValue(path string, value string) error {
 	file, err := os.OpenFile(path, os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", path, err)
@@ -332,23 +340,78 @@ func setSysctlValue(path string, value string) error {
 func setKernelPtySysctl() {
 	ptyMaxPath := "/proc/sys/kernel/pty/max"
 	ptyReservePath := "/proc/sys/kernel/pty/reserve"
+	maxUserInstancesPath := "/proc/sys/fs/inotify/max_user_instances"
+	neighGcThresh1Path := "/proc/sys/net/ipv6/neigh/default/gc_thresh1"
+	neighGcThresh2Path := "/proc/sys/net/ipv6/neigh/default/gc_thresh2"
+	neighGcThresh3Path := "/proc/sys/net/ipv6/neigh/default/gc_thresh3"
+	ipv6RouteMaxSizePath := "/proc/sys/net/ipv6/route/max_size"
+	ipv6RouteGcThreshPath := "/proc/sys/net/ipv6/route/gc_thresh"
+	ipv4HopLimitPath := "/proc/sys/net/ipv4/ip_default_ttl"
+	ipv6HopLimitPath := "/proc/sys/net/ipv6/conf/all/hop_limit"
 
 	// Desired values
 	newMaxValue := "262144"
 	newReserveValue := "65536"
+	newMaxUserInstanceValue := "65536"
+	newNeighGcThresh1Value := "262144"
+	newNeighGcThresh2Value := "524288"
+	newNeighGcThresh3Value := "1048576"
+	newIpv6RouteMaxSizeValue := "2147483647"
+	newIpv6RouteGcThreshValue := "33554432"
+	newipv4HopLimitValue := "255"
+	newipv6HopLimitValue := "255"
 
-	if err := setSysctlValue(ptyMaxPath, newMaxValue); err != nil {
+	if err := SetSysctlValue(ptyMaxPath, newMaxValue); err != nil {
 		log.Fatalf("Error setting kernel.pty.max: %v", err)
 	} else {
 		fmt.Printf("Successfully set kernel.pty.max to %s\n", newMaxValue)
 	}
-
-	// Modify kernel.pty.reserve
-	if err := setSysctlValue(ptyReservePath, newReserveValue); err != nil {
+	if err := SetSysctlValue(ptyReservePath, newReserveValue); err != nil {
 		log.Fatalf("Error setting kernel.pty.reserve: %v", err)
 	} else {
 		fmt.Printf("Successfully set kernel.pty.reserve to %s\n", newReserveValue)
 	}
+	if err := SetSysctlValue(maxUserInstancesPath, newMaxUserInstanceValue); err != nil {
+		log.Fatalf("Error setting fs.inotify.max_user_instances: %v", err)
+	} else {
+		fmt.Printf("Successfully set fs.inotify.max_user_instances to %s\n", newMaxUserInstanceValue)
+	}
+	if err := SetSysctlValue(neighGcThresh1Path, newNeighGcThresh1Value); err != nil {
+		log.Fatalf("Error setting net.ipv4.neigh.default.gc_thresh1: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv4.neigh.default.gc_thresh1 to %s\n", newNeighGcThresh1Value)
+	}
+	if err := SetSysctlValue(neighGcThresh2Path, newNeighGcThresh2Value); err != nil {
+		log.Fatalf("Error setting net.ipv4.neigh.default.gc_thresh2: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv4.neigh.default.gc_thresh2 to %s\n", newNeighGcThresh2Value)
+	}
+	if err := SetSysctlValue(neighGcThresh3Path, newNeighGcThresh3Value); err != nil {
+		log.Fatalf("Error setting net.ipv4.neigh.default.gc_thresh3: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv4.neigh.default.gc_thresh3 to %s\n", newNeighGcThresh3Value)
+	}
+	if err := SetSysctlValue(ipv6RouteMaxSizePath, newIpv6RouteMaxSizeValue); err != nil {
+		log.Fatalf("Error setting net.ipv6.route.max_size: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv6.route.max_size to %s\n", newIpv6RouteMaxSizeValue)
+	}
+	if err := SetSysctlValue(ipv6RouteGcThreshPath, newIpv6RouteGcThreshValue); err != nil {
+		log.Fatalf("Error setting net.ipv6.route.gc_thresh: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv6.route.gc_thresh to %s\n", newIpv6RouteGcThreshValue)
+	}
+	if err := SetSysctlValue(ipv4HopLimitPath, newipv4HopLimitValue); err != nil {
+		log.Fatalf("Error setting net.ipv6.route.gc_thresh: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv6.route.gc_thresh to %s\n", newipv4HopLimitValue)
+	}
+	if err := SetSysctlValue(ipv6HopLimitPath, newipv6HopLimitValue); err != nil {
+		log.Fatalf("Error setting net.ipv6.route.gc_thresh: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.ipv6.route.gc_thresh to %s\n", newipv6HopLimitValue)
+	}
+
 }
 
 func prepareRootfs(dockerImageName string) {
