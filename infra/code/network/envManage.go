@@ -257,6 +257,7 @@ func setEnvPaths(workDir string, dockerImageName string) {
 }
 
 func setMntConfig(mntDir string) error {
+	VolumeOptMap = make(map[int]string)
 	if mntDir == "" {
 		return nil
 	}
@@ -278,16 +279,12 @@ func setMntConfig(mntDir string) error {
 	}
 
 	// Register volume info
-	VolumeOptMap = make(map[int]string)
 	for _, mnt := range mntConfig.Mnts {
 		nodeId := mnt.NodeId
 		splitedVolumeOpt := strings.Split(mnt.VolumeOpt, ":")
 		srcDir := splitedVolumeOpt[0]
 		dstDir := splitedVolumeOpt[1]
 		srcDir = path.Join(mntDir, "node"+strconv.Itoa(nodeId), srcDir)
-		if err != nil {
-			return fmt.Errorf("Failed to resolve mount src dir:", err)
-		}
 		newVolumeOpt := srcDir + ":" + dstDir
 		VolumeOptMap[mnt.NodeId] = newVolumeOpt
 	}
