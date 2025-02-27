@@ -50,27 +50,27 @@ var_options = {
         # ["grid", "50", "50"],
         # ["isolated", "3600"],
 
-        ["grid", "10", "10"],
-        ["grid", "20", "20"],
-        ["grid", "30", "30"],
-        ["grid", "40", "40"],
-        ["grid", "50", "50"],
-        ["grid", "60", "60"],
-        ["grid", "70", "70"],
-        ["grid", "75", "75"],
-        ["grid", "80", "80"],
-        ["grid", "85", "85"],
-        ["grid", "90", "90"],
-        ["grid", "95", "95"],
-        ["grid", "100", "100"],
+        # ["grid", "10", "10"],
+        # ["grid", "20", "20"],
+        # ["grid", "30", "30"],
+        # ["grid", "40", "40"],
+        # ["grid", "50", "50"],
+        # ["grid", "60", "60"],
+        # ["grid", "70", "70"],
+        # ["grid", "75", "75"],
+        # ["grid", "80", "80"],
+        # ["grid", "85", "85"],
+        # ["grid", "90", "90"],
+        # ["grid", "95", "95"],
+        # ["grid", "100", "100"],
 
-        ["clos", "8"],
-        ["clos", "12"],
-        ["clos", "16"],
-        ["clos", "20"],
-        ["clos", "24"],
-        ["clos", "28"],
-        ["clos", "32"],
+        # ["clos", "8"],
+        # ["clos", "12"],
+        # ["clos", "16"],
+        # ["clos", "20"],
+        # ["clos", "24"],
+        # ["clos", "28"],
+        # ["clos", "32"],
 
         # ["chain", "1251"],
         # ["chain", "2501"],
@@ -90,9 +90,9 @@ var_options = {
         # ["trie", "8751", "10"],
         # ["trie", "10001", "10"],
 
-        ["as", "small"],
-        ["as", "medium"],
-        ["as", "large"],
+        # ["as", "small"],
+        # ["as", "medium"],
+        # ["as", "large"],
     ],
 
     "b": [
@@ -391,14 +391,14 @@ if __name__ == "__main__":
 
         # Execute test commands
         print(setup_commands)
-        # execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-        # time.sleep(15) # Wait for a while
+        execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+        time.sleep(15) # Wait for a while
         print(clean_commands)
-        # execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
-        # time.sleep(20) # Wait for a while
+        execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+        time.sleep(20) # Wait for a while
 
         # Reap results of current test
-        # reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
+        reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
 
     # Close connection
     for remote_machine in remote_machines:
