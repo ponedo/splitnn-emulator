@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import math
 import argparse
 import subprocess
 import shutil
@@ -37,7 +38,9 @@ const_options = {
     "s": SERVER_CONFIG_PATH
 }
 
-BBNS_NUM_TEST = True
+BBNS_NUM_TEST = False
+USE_BEST_BBNS_NUM = True
+assert not (BBNS_NUM_TEST and USE_BEST_BBNS_NUM)
 var_options = {
     # Topologies
     "t": [
@@ -47,27 +50,27 @@ var_options = {
         # ["grid", "50", "50"],
         # ["isolated", "3600"],
 
-        # ["grid", "10", "10"],
-        # ["grid", "20", "20"],
-        # ["grid", "30", "30"],
-        # ["grid", "40", "40"],
-        # ["grid", "50", "50"],
-        # ["grid", "60", "60"],
-        # ["grid", "70", "70"],
-        # ["grid", "75", "75"],
-        # ["grid", "80", "80"],
-        # ["grid", "85", "85"],
-        # ["grid", "90", "90"],
-        # ["grid", "95", "95"],
-        # ["grid", "100", "100"],
+        ["grid", "10", "10"],
+        ["grid", "20", "20"],
+        ["grid", "30", "30"],
+        ["grid", "40", "40"],
+        ["grid", "50", "50"],
+        ["grid", "60", "60"],
+        ["grid", "70", "70"],
+        ["grid", "75", "75"],
+        ["grid", "80", "80"],
+        ["grid", "85", "85"],
+        ["grid", "90", "90"],
+        ["grid", "95", "95"],
+        ["grid", "100", "100"],
 
-        # ["clos", "8"],
-        # ["clos", "12"],
-        # ["clos", "16"],
-        # ["clos", "20"],
-        # ["clos", "24"],
-        # ["clos", "28"],
-        # ["clos", "32"],
+        ["clos", "8"],
+        ["clos", "12"],
+        ["clos", "16"],
+        ["clos", "20"],
+        ["clos", "24"],
+        ["clos", "28"],
+        ["clos", "32"],
 
         # ["chain", "1251"],
         # ["chain", "2501"],
@@ -87,9 +90,9 @@ var_options = {
         # ["trie", "8751", "10"],
         # ["trie", "10001", "10"],
 
-        # ["as", "small"],
-        # ["as", "medium"],
-        # ["as", "large"],
+        ["as", "small"],
+        ["as", "medium"],
+        ["as", "large"],
     ],
 
     "b": [
@@ -129,7 +132,7 @@ var_options = {
     # ]
 }
 
-if BBNS_NUM_TEST:
+if BBNS_NUM_TEST or USE_BEST_BBNS_NUM:
     del(var_options["b"])
 
 server_spec_options = {
@@ -257,6 +260,14 @@ def generate_bbns_num_test_numbers(topo_args):
     return bbns_nums
 
 
+def generate_best_bbns_num(topo_args):
+    topo_type = topo_args[0]
+    topo_data = topo_args[1:]
+    link_num = topo_funcs[topo_type]["get_link_num"](*topo_data)
+    best_bbns_num = math.ceil(2.353 * math.sqrt(link_num))
+    return best_bbns_num
+
+
 def yield_one_cmd(opts, const_options, server_spec_options, server_config_list):
     var_opts = deepcopy(opts)
     opts.update(const_options)
@@ -298,6 +309,11 @@ def exp_cmds_iterator(
                 opts_with_b = {**opts, "b": bbns_num}
                 yield yield_one_cmd(
                     opts_with_b, const_options, server_spec_options, server_config_list)
+        if USE_BEST_BBNS_NUM:
+            bbns_num = generate_best_bbns_num(opts["t"])
+            opts_with_b = {**opts, "b": bbns_num}
+            yield yield_one_cmd(
+                opts_with_b, const_options, server_spec_options, server_config_list)
         else:
             yield yield_one_cmd(
                 opts, const_options, server_spec_options, server_config_list)
@@ -375,14 +391,14 @@ if __name__ == "__main__":
 
         # Execute test commands
         print(setup_commands)
-        execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-        time.sleep(15) # Wait for a while
+        # execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+        # time.sleep(15) # Wait for a while
         print(clean_commands)
-        execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
-        time.sleep(20) # Wait for a while
+        # execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+        # time.sleep(20) # Wait for a while
 
         # Reap results of current test
-        reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
+        # reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
 
     # Close connection
     for remote_machine in remote_machines:
