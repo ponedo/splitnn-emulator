@@ -259,7 +259,7 @@ def add_ospf_disabled_intf(
         local_node_id, peer_node_id, node_infos,
         ):
     node_infos[local_node_id]["ospf_disabled_intfs"].append(
-        f"eth-{local_node_id}-{peer_node_id}")
+        f"{local_node_id}-{peer_node_id}")
 
 
 def add_ebgp_neighbor(
@@ -272,14 +272,14 @@ def add_ebgp_neighbor(
         "peer_node_id": peer_node_id,
         "peer_intf_ipv6_addr": peer_intf_ipv6_addr,
         "peer_as_number": peer_domain_id + 1,
-        "local_intf": f"eth-{local_node_id}-{peer_node_id}",
+        "local_intf": f"{local_node_id}-{peer_node_id}",
         "local_intf_ipv6_addr": local_intf_ipv6_addr,
     }
     peer_bgp_neighbor = {
         "peer_node_id": local_node_id,
         "peer_intf_ipv6_addr": local_intf_ipv6_addr,
         "peer_as_number": local_domain_id + 1,
-        "local_intf": f"eth-{peer_node_id}-{local_node_id}",
+        "local_intf": f"{peer_node_id}-{local_node_id}",
         "local_intf_ipv6_addr": peer_intf_ipv6_addr,
     }
     node_infos[local_node_id]["ebgp_neighbors"].append(local_bgp_neighbor)

@@ -151,16 +151,16 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	lm.curlinkNum += 1
 
-	insideVethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
-	insideVethNamej = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+	insideVethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	insideVethNamej = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
 	if nodeIdi < nodeIdj {
-		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
-		vethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-i"
-		vethNamej = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-j"
+		brName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		vethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-i"
+		vethNamej = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-j"
 	} else {
-		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
-		vethNamei = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-i"
-		vethNamej = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-j"
+		brName = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		vethNamei = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-i"
+		vethNamej = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-j"
 	}
 
 	if Parallel > 0 {
@@ -264,15 +264,15 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 		lm.curlinkNumMutex.Lock()
 	}
 
-	insideVethNamei = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+	insideVethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	if nodeIdi < nodeIdj {
-		brName = "br-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
-		vxlanName = "eth-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-v"
-		vethNamei = "vxl-" + strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		brName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		vxlanName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-v"
+		vethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	} else {
-		brName = "br-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
-		vxlanName = "eth-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-v"
-		vethNamei = "vxl-" + strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		brName = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		vxlanName = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-v"
+		vethNamei = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
 	}
 
 	if Parallel > 0 {
