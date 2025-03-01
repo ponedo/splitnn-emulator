@@ -178,7 +178,7 @@ def prepare_env_on_remote_machines(remote_machines, server_config_list):
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
-                "./sync_code.sh", os.path.join(server["infraWorkDir"], ".."), None, False
+                "./sync_code.sh rigid", os.path.join(server["infraWorkDir"], ".."), None, False
             ) for server in server_config_list
         }
     )
@@ -195,14 +195,14 @@ def prepare_env_on_remote_machines(remote_machines, server_config_list):
         }
     )
 
-    # # Pull docker image needed on each machine
-    # execute_command_on_multiple_machines(
-    #     remote_machines, {
-    #         server["ipAddr"]: (
-    #             f"./scripts/pull_docker_image.sh {server["dockerImageName"]}", server["infraWorkDir"], None, False
-    #         ) for server in servers
-    #     }
-    # )
+    # Pull docker image needed on each machine
+    execute_command_on_multiple_machines(
+        remote_machines, {
+            server["ipAddr"]: (
+                f"./scripts/pull_docker_image.sh {server['dockerImageName']}", server["infraWorkDir"], None, False
+            ) for server in server_config_list
+        }
+    )
 
 
 def get_full_topo_filename(topo_args):
