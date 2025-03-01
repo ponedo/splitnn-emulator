@@ -9,18 +9,20 @@ import (
 	"os/exec"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
 type NtlBrLinkManager struct {
-	curBackBoneNum  int
-	curlinkNum      int
-	curlinkNumMutex sync.Mutex
-	curBackBoneNs   netns.NsHandle
-	hostNetns       netns.NsHandle
-	nm              NodeManager
+	curBackBoneNum     int
+	curlinkNum         int
+	curlinkNumMutex    sync.Mutex
+	curBackBoneNs      netns.NsHandle
+	ExternalLinkOpTime time.Duration
+	hostNetns          netns.NsHandle
+	nm                 NodeManager
 }
 
 func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
@@ -30,6 +32,7 @@ func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 	lm.curlinkNum = 0
 	lm.nm = nm
 	lm.curBackBoneNs = -1
+	lm.ExternalLinkOpTime = 0
 	lm.hostNetns, err = netns.Get()
 	if err != nil {
 		return err
@@ -39,6 +42,7 @@ func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 
 func (lm *NtlBrLinkManager) Delete() error {
 	lm.hostNetns.Close()
+	fmt.Printf("ExternalLinkOp time: %.2fs\n", lm.ExternalLinkOpTime.Seconds())
 	return nil
 }
 
@@ -251,6 +255,7 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	var backboneNs, nodeiNetNs netns.NsHandle
 	var brName, vxlanName, vethNamei, insideVethNamei string
 
+	startTime := time.Now()
 	/* Prepare network namespace handles */
 	backboneNs = lm.curBackBoneNs
 	nodeiNetNs, err = lm.nm.GetNodeNetNs(nodeIdi)
@@ -365,6 +370,8 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	if err != nil {
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
+	lm.ExternalLinkOpTime += time.Since(startTime)
+
 	return err
 }
 
