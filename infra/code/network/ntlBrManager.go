@@ -273,11 +273,11 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	if nodeIdi < nodeIdj {
 		brName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 		vxlanName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-v"
-		vethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
+		vethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj) + "-i"
 	} else {
 		brName = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
 		vxlanName = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-v"
-		vethNamei = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
+		vethNamei = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-i"
 	}
 
 	if Parallel > 0 {
@@ -300,11 +300,11 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 		Group:        net.ParseIP(ServerList[serverID].IPAddr),
 		Learning:     true,
 	}
-	vxlanIn := &netlink.Vxlan{
-		LinkAttrs: netlink.LinkAttrs{
-			Name: vxlanName,
-		},
-	}
+	// vxlanIn := &netlink.Vxlan{
+	// 	LinkAttrs: netlink.LinkAttrs{
+	// 		Name: vxlanName,
+	// 	},
+	// }
 	vethOuti := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:  vethNamei,
@@ -348,7 +348,11 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 
 	/* Set Vxlan master and set Vxlan up */
 	var newVxlan netlink.Link
-	err = netlink.LinkSetMaster(vxlanIn, br)
+	newVxlan, err = netlink.LinkByName(vxlanName)
+	if err != nil {
+		return fmt.Errorf("failed to LinkByName (%d, %d, %d, %s, %v): %s", nodeIdi, nodeIdj, vxlanID, brName, br, err)
+	}
+	err = netlink.LinkSetMaster(newVxlan, br)
 	if err != nil {
 		return fmt.Errorf("failed to LinkSetMaster (%d, %d, %d, %s, %v): %s", nodeIdi, nodeIdj, vxlanID, brName, br, err)
 	}

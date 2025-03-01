@@ -74,5 +74,8 @@ func (g *Graph) GetEdgeNum() int {
 		edgeNum += len(adjList)
 	}
 	edgeNum /= 2
+	for _, danglingList := range g.DanglingEdgeList {
+		edgeNum += len(danglingList)
+	}
 	return edgeNum
 }
