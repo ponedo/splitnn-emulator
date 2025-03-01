@@ -173,6 +173,16 @@ def prepare_env_on_remote_machines(remote_machines, server_config_list):
             False
         ) for server in server_config_list
     }
+    
+    # Synchronize code
+    execute_command_on_multiple_machines(
+        remote_machines, {
+            server["ipAddr"]: (
+                "./sync_code.sh", os.path.join(server["infraWorkDir"], ".."), None, False
+            ) for server in server_config_list
+        }
+    )
+
     send_file_to_multiple_machines(
         remote_machines, server_config_src_dst_paths)
 
