@@ -39,7 +39,7 @@ const_options = {
 }
 
 BBNS_NUM_TEST = False
-USE_BEST_BBNS_NUM = True
+USE_BEST_BBNS_NUM = False
 assert not (BBNS_NUM_TEST and USE_BEST_BBNS_NUM)
 var_options = {
     # Topologies
@@ -51,7 +51,7 @@ var_options = {
         # ["isolated", "3600"],
 
         # ["grid", "10", "10"],
-        # ["grid", "20", "20"],
+        ["grid", "20", "20"],
         # ["grid", "30", "30"],
         # ["grid", "40", "40"],
         # ["grid", "50", "50"],
@@ -97,12 +97,12 @@ var_options = {
 
     "b": [
         1,
-        2,
-        3,
-        4,
-        5,
-        50,
-        100,
+        # 2,
+        # 3,
+        # 4,
+        # 5,
+        # 50,
+        # 100,
     ],
 
     "a": [
@@ -112,7 +112,7 @@ var_options = {
 
     "d": [
         0,
-        1
+        # 1
     ],
 
     "N": [
@@ -351,7 +351,7 @@ def reap_one_test_results(remote_machines, server_config_list, cur_test_log_dir)
                 server_log_dirs[i],
                 remote_result_path[0] == "dir"
             )
-            for server in server_config_list
+            for i, server in enumerate(server_config_list)
         }
         receive_file_from_multiple_machines(remote_machines, directories)
 
