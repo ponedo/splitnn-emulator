@@ -2,6 +2,7 @@ import os
 import shutil
 import orjson
 import ipaddress
+from itertools import islice
 
 def clear_or_create_directory(dir_path):
     # Check if the directory exists
@@ -75,3 +76,14 @@ class IPv6AddressGenerator:
             if not self.is_multicast(self.current_address):
                 break
         return rtr
+
+ 
+def count_lines_islice(file_path, chunk_size=1024):
+    count = 0
+    with open(file_path, 'r') as file:
+        while True:
+            buffer = list(islice(file, chunk_size))
+            if not buffer:
+                break
+            count += len(buffer) - buffer.count('')
+    return count
