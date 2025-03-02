@@ -28,9 +28,9 @@ REMOTE_RESULT_PATHS = [
     ("file", "tmp/setup_log.txt"),
     ("file", "tmp/clean_log.txt"),
     ("file", "tmp/link_log.txt"),
-    ("dir", "tmp/cctr_log"),
-    ("dir", "tmp/kern_func"),
-    ("dir", "tmp/cctr_time.txt"),
+    # ("dir", "tmp/cctr_log"),
+    # ("dir", "tmp/kern_func"),
+    # ("dir", "tmp/cctr_time.txt"),
     ("dir", "tmp/setup_cpu_mem_usage.txt"),
     ("dir", "tmp/clean_cpu_mem_usage.txt"),
 ]
@@ -54,7 +54,7 @@ var_options = {
         # ["isolated", "3600"],
 
         # ["grid", "10", "10"],
-        ["grid", "20", "20"],
+        # ["grid", "20", "20"],
         # ["grid", "30", "30"],
         # ["grid", "40", "40"],
         # ["grid", "50", "50"],
@@ -95,7 +95,7 @@ var_options = {
 
         # ["as", "small"],
         # ["as", "medium"],
-        ["as", "large"],
+        # ["as", "large"],
     ],
 
     "b": [
