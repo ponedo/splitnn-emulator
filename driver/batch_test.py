@@ -28,10 +28,11 @@ REMOTE_RESULT_PATHS = [
     ("file", "tmp/setup_log.txt"),
     ("file", "tmp/clean_log.txt"),
     ("file", "tmp/link_log.txt"),
-    ("dir", "tmp/ctr_log"),
+    ("dir", "tmp/cctr_log"),
     ("dir", "tmp/kern_func"),
     ("dir", "tmp/cctr_time.txt"),
-    ("dir", "tmp/cpu_mem_usage.txt"),
+    ("dir", "tmp/setup_cpu_mem_usage.txt"),
+    ("dir", "tmp/clean_cpu_mem_usage.txt"),
 ]
 
 ######################### Command options ############################
