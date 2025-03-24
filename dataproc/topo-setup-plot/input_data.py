@@ -73,6 +73,26 @@ def get_clean_time(log_dirpath):
     return link_clean_time, node_clean_time, clean_time
 
 
+def get_peak_memory(log_dirpath):
+    cpu_mem_log_filepath = os.path.join(log_dirpath, "cpu_mem_usage.txt")
+    if not os.path.exists(cpu_mem_log_filepath):
+        cpu_mem_log_filepath = os.path.join(log_dirpath, "setup_cpu_mem_usage.txt")
+
+    used_memory_values = []
+    with open(cpu_mem_log_filepath, "r") as file:
+        for line in file:
+            match = re.search(r"Memory\s*->.*Used:\s*([\d.]+)\s*MB", line)
+            if match:
+                used_memory_values.append(float(match.group(1)))
+    if not used_memory_values:
+        print("No memory usage data found.")
+        return None
+    first_memory_value = used_memory_values[0]
+    max_memory_value = max(used_memory_values)
+    peak_usage = max_memory_value - first_memory_value
+    return peak_usage
+
+
 def get_one_test_results(test_dirpath):
     results = {
         'node_setup_time': 0,
@@ -81,12 +101,16 @@ def get_one_test_results(test_dirpath):
         'link_clean_time': 0,
         'node_clean_time': 0,
         'clean_time': 0,
+        'peak_memory': 0,
     }
     for server_dirname in os.listdir(test_dirpath):
         node_setup_time, link_setup_time, setup_time = get_setup_time(
             os.path.join(test_dirpath, server_dirname)
         )
         link_clean_time, node_clean_time, clean_time = get_clean_time(
+            os.path.join(test_dirpath, server_dirname)
+        )
+        peak_memory = get_peak_memory(
             os.path.join(test_dirpath, server_dirname)
         )
         results["node_setup_time"] = \
@@ -101,6 +125,8 @@ def get_one_test_results(test_dirpath):
             max(results["node_clean_time"], node_clean_time)
         results["clean_time"] = \
             max(results["clean_time"], clean_time)
+        results["peak_memory"] = \
+            max(results["peak_memory"], peak_memory)
     return results
 
 

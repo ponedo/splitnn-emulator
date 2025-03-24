@@ -65,6 +65,7 @@ y_value_types = [
     'link_clean_time',
     'node_clean_time',
     'clean_time',
+    'peak_memory',
 ]
 filter_values = {
     # "b": 1,
