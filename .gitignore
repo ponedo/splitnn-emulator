@@ -19,6 +19,7 @@ raw_results/
 perf*
 .vscode/
 __pycache__/
+tstenv/
 !placeholder
 !infra/tmp/topo/test_topo
 !infra/tmp/test_mnt/
