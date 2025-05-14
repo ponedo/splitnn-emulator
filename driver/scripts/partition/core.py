@@ -26,16 +26,17 @@ def partition_topo(input_topo_filepath, server_config_list):
     node2pmid = partition_graph_across_pm(nodes, adjacency_list, server_config_list, input_topo_filepath)
 
     # Construct the sub-graph of each PM for partitioning
-    pmid2nodes = {}
+    pmid2nodes = {} # Construct node list
+    for pm_id in pm2servernum.keys():
+        pmid2nodes[pm_id] = []
     for node, pm_id in node2pmid.items():
-        if pmid2nodes.get(pm_id) is None:
-            pmid2nodes[pm_id] = []
         pmid2nodes[pm_id].append(node)
-    pmid2adjacencylist = {}
+    pmid2adjacencylist = {} # Construct adjacency list
+    for pm_id in pmid2nodes.keys():
+        pmid2adjacencylist[pm_id] = {}
+        for node in pmid2nodes[pm_id]:
+            pmid2adjacencylist[pm_id][node] = []
     for node, pm_id in node2pmid.items():
-        if pmid2adjacencylist.get(pm_id) is None:
-            # Initialize the adjacency list for the PM, including dangling nodes
-            pmid2adjacencylist[pm_id] = {}.fromkeys(pmid2nodes[pm_id], [])
         # If the node is not dangling, add its neighbors in the same PM into the adjacency list
         for neighbor in adjacency_list[node]:
             if node2pmid[neighbor] == pm_id:

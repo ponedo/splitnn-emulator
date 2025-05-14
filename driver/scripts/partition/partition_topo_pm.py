@@ -20,6 +20,14 @@ def partition_graph_across_pm(
     for i, server in enumerate(server_config_list):
         pm_id = server["phyicalMachineId"]
         distinct_pm_ids.add(pm_id)
+    
+    # If the number of PMs is 1, return the original topology
+    if len(distinct_pm_ids) == 1:
+        print("Only one PM is available. No partitioning needed.")
+        node2pmid = {}
+        for node in nodes:
+            node2pmid[node] = list(distinct_pm_ids)[0]
+        return node2pmid
 
     # Convert the topology file into metis graph format
     topo_file_dir = os.path.dirname(input_topo_filepath)
@@ -33,10 +41,12 @@ def partition_graph_across_pm(
 
     # Call TBS partitioning program
     pm_num = len(distinct_pm_ids)
+    node_num = len(node_ids)
+    cpu_capacity = int(1.5 * node_num // pm_num)
     generate_topology_cmd = [
         TBS_BIN_PATH, full_graph_metis_filepath,
         f"--k={pm_num}",
-        f"--cpu_capacity={8000}",
+        f"--cpu_capacity={cpu_capacity}",
         "--preconfiguration=esocial"
     ]
     print(f"Running TBS partitioning with command: {' '.join(generate_topology_cmd)}")

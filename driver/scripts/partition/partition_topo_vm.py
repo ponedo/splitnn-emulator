@@ -35,6 +35,7 @@ def partition_graph_across_vm(nodes, adjacency_list, num_partitions, acc_server_
         return nodes, adjacency_list
 
     # Convert adjacency list to METIS format with correct indices
+    start_time = time.time()
     metis_adjacency_list, node_to_index, index_to_node = create_metis_adjacency_list(nodes, adjacency_list)
 
     # Partition the graph into num_partitions parts using METIS

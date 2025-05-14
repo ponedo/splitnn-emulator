@@ -95,7 +95,7 @@ var_options = {
 
         # ["as", "small"],
         # ["as", "medium"],
-        ["as", "large"],
+        # ["as", "large"],
     ],
 
     "b": [
@@ -393,34 +393,34 @@ if __name__ == "__main__":
 
     # "./bin/topo_setup_test -o setup -t tmp/topo/grid_10_10.txt -b 1 -a dynamic -d 0 -N cctr -l ntlbr -s server_config.json -i 0"
 
-    # # Prepare local repository directory for storing test results
-    # server_num = len(server_config_list)
-    # local_result_repo_dir = os.path.join(LOCAL_RESULT_DIR, f"result-{server_num}-servers")
-    # os.makedirs(local_result_repo_dir, exist_ok=True)
-    # shutil.copy(SERVER_CONFIG_PATH, local_result_repo_dir)
+    # Prepare local repository directory for storing test results
+    server_num = len(server_config_list)
+    local_result_repo_dir = os.path.join(LOCAL_RESULT_DIR, f"result-{server_num}-servers")
+    os.makedirs(local_result_repo_dir, exist_ok=True)
+    shutil.copy(SERVER_CONFIG_PATH, local_result_repo_dir)
 
-    # # Iterate over all tests with different options. Each loop yields a group of commands executing the test.
-    # for var_opts, setup_commands, clean_commands in exp_cmds_iterator(
-    #     const_options, var_options, server_spec_options, server_config_list):
-    #     # Check log directory of current test
-    #     final_cur_test_log_dir = get_one_test_log_name(var_opts)
-    #     full_cur_test_log_dir = os.path.join(local_result_repo_dir, final_cur_test_log_dir)
-    #     if os.path.exists(full_cur_test_log_dir) and os.listdir(full_cur_test_log_dir):
-    #         print(f"Test {var_opts} skipped")
-    #         continue # Current test has been completed before, skip current iteration
-    #     os.makedirs(full_cur_test_log_dir, exist_ok=True)
+    # Iterate over all tests with different options. Each loop yields a group of commands executing the test.
+    for var_opts, setup_commands, clean_commands in exp_cmds_iterator(
+        const_options, var_options, server_spec_options, server_config_list):
+        # Check log directory of current test
+        final_cur_test_log_dir = get_one_test_log_name(var_opts)
+        full_cur_test_log_dir = os.path.join(local_result_repo_dir, final_cur_test_log_dir)
+        if os.path.exists(full_cur_test_log_dir) and os.listdir(full_cur_test_log_dir):
+            print(f"Test {var_opts} skipped")
+            continue # Current test has been completed before, skip current iteration
+        os.makedirs(full_cur_test_log_dir, exist_ok=True)
 
-    #     # Execute test commands
-    #     print(setup_commands)
-    #     execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
-    #     time.sleep(15) # Wait for a while
-    #     print(clean_commands)
-    #     execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
-    #     time.sleep(20) # Wait for a while
+        # Execute test commands
+        print(setup_commands)
+        execute_command_on_multiple_machines(remote_machines, setup_commands) # Setup virtual network
+        time.sleep(15) # Wait for a while
+        print(clean_commands)
+        execute_command_on_multiple_machines(remote_machines, clean_commands) # Clean virtual network
+        time.sleep(20) # Wait for a while
 
-    #     # Reap results of current test
-    #     reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
+        # Reap results of current test
+        reap_one_test_results(remote_machines, server_config_list, full_cur_test_log_dir)
 
-    # # Close connection
-    # for remote_machine in remote_machines:
-    #     remote_machine.close_connection()
+    # Close connection
+    for remote_machine in remote_machines:
+        remote_machine.close_connection()
