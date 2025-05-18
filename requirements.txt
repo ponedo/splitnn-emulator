@@ -7,6 +7,7 @@ fonttools==4.57.0
 kiwisolver==1.4.8
 matplotlib==3.10.1
 metis==0.2a5
+networkx==3.4.2
 numpy==2.2.4
 orjson==3.10.16
 packaging==24.2
@@ -22,7 +23,3 @@ scipy==1.15.2
 scp==0.15.0
 six==1.17.0
 tzdata==2025.2
-gurobipy==12.0.2
-igraph==0.11.8
-networkx==2.6.3
-texttable==1.7.0
