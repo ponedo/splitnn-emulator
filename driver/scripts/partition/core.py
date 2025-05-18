@@ -50,7 +50,7 @@ def partition_topo(input_topo_filepath, server_config_list):
     # Partition the sub-graph of each PM into VMs
     import concurrent.futures
     def partition_vm_task(pm_id, pmid2nodes, pmid2adjacencylist, pm_server_num, acc_server_num):
-        print(f"Partitioning with PM #{pm_id}...")
+        # print(f"Partitioning with PM #{pm_id}...")
         return partition_graph_across_vm(
             pmid2nodes[pm_id], pmid2adjacencylist[pm_id], pm_server_num, acc_server_num
         )

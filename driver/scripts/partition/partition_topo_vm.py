@@ -24,7 +24,7 @@ def create_metis_adjacency_list(nodes, adjacency_list):
         neighbor_count += 1
         # if neighbor_count % 1000 == 0:
         #     print(f"Neighbor count: {neighbor_count}")
-    print("Adjacency list conversion completed. Time-cost: ", time.time() - start_time)
+    # print("Adjacency list conversion completed. Time-cost: ", time.time() - start_time)
 
     return metis_adjacency_list, node_to_index, index_to_node
 
@@ -39,10 +39,10 @@ def partition_graph_across_vm(nodes, adjacency_list, num_partitions, acc_server_
     metis_adjacency_list, node_to_index, index_to_node = create_metis_adjacency_list(nodes, adjacency_list)
 
     # Partition the graph into num_partitions parts using METIS
-    print("Calling metis.part_graph...")
+    # print("Calling metis.part_graph...")
     start_time = time.time()
     _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions)
-    print("Partitioning completed. Time-cost: ", time.time() - start_time)
+    # print("Partitioning completed. Time-cost: ", time.time() - start_time)
 
     node2serverid = {}
     for idx, part in enumerate(parts):

@@ -42,7 +42,7 @@ def partition_graph_across_pm(
     # Call TBS partitioning program
     pm_num = len(distinct_pm_ids)
     node_num = len(node_ids)
-    cpu_capacity = int(1.5 * node_num // pm_num)
+    cpu_capacity = int(1.05 * node_num // pm_num)
     generate_topology_cmd = [
         TBS_BIN_PATH, full_graph_metis_filepath,
         f"--k={pm_num}",
@@ -53,14 +53,23 @@ def partition_graph_across_pm(
     original_dir = os.getcwd()
     os.chdir(TBS_BIN_DIR)
     try:
+        stderr_output = []
         with subprocess.Popen(generate_topology_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as proc:
             for line in proc.stdout:
                 print(line, end='')
             for line in proc.stderr:
+                stderr_output.append(line)
                 print(line, end='')
             proc.wait()
     finally:
         os.chdir(original_dir)
+    # If returncode is 0, but stderr is non-empty and contains 'Traceback', treat as error, and exit the program
+    # print(f"proc.returncode: {proc.returncode}")
+    if proc.returncode != 0 or any("Traceback" in line for line in stderr_output):
+        print("Error occurred while running TBS partitioning:")
+        for line in stderr_output:
+            print(line, end='')
+        exit(1)
     # result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
 
     # Acquire partition result
