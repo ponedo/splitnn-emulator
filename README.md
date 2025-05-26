@@ -42,7 +42,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
         ["setup", "topo_setup_test", "wireless_nlevent_flush"],
         ["setup", "topo_setup_test", "fib6_clean_tree"],
         ["clean", "", "br_vlan_flush"]
-    ], // Monitoring and logging option, keep it as is
+    ], // Used for recording kernel function time-cost. Just keep them as are.
     "server_best_bbns_factor": 2.353, // The measured k_opt argument, which influences the number of backbone namespaces when constructing a VN (see "Measuring platform-specific parameters" subsection below and check the paper for more details).
     "phyicalMachineId": 0 // If you're using multiple physical machines, use this ID to indicate which physical machine this VM is on. !!! IMPORTANT !!!: Currently, phsicalMachineId of all VMs should be SAME. To run experiments across multiple machines, the Gurobi optimizer with a license should be installed (Future work).
     ```
@@ -65,7 +65,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
     ```
     Operations on the master VM should be executed in this virtual environment
 
-6. Setup Gurobi optimizer on the master VM for experiments on multiple physical machine (Future work)
+6. Setup Gurobi optimizer on the master VM for experiments on multiple physical machine (Future work for the full-paper version).
 
 ## Usage
 
