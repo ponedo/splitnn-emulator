@@ -24,7 +24,7 @@ The project contains following directories:
 
 ## Setting up Your VM Cluster
 
-Before running the experiments, please setup a VM cluster including a master VM and some slave VMs (the master can also be a slave) with following steps:
+Before running the experiments, please setup a VM cluster including a master VM and some slave VMs (the master can also be a slave). In future we are looking forward to providing an script for setup automation. But currently, please CAREFULLY with following steps to setup your environment:
 
 1. Git clone this repo on all VMs.
 
@@ -56,7 +56,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
 
 4. Pull the docker image configured in server_config.json on all slave VMs.
 
-5. Setup a python virtual enviroment on the master VM with following commands:
+5. Setup a python virtual enviroment and install python dependencies on the master VM with following commands:
     ```bash
     cd /path/to/repository
     python -m venv tstenv
@@ -65,7 +65,51 @@ Before running the experiments, please setup a VM cluster including a master VM 
     ```
     Operations on the master VM should be executed in this virtual environment
 
-6. Setup Gurobi optimizer on the master VM for experiments on multiple physical machine (Future work for the full-paper version).
+6. Install dependencies of topology partitioning for multi-VM splitting on the master VM:
+
+    6.1 Install [GKlib](https://github.com/KarypisLab/GKlib):
+
+    ```bash
+    git clone https://github.com/KarypisLab/GKlib.git
+    cd GKlib
+    # For x86 platform
+    make config prefix=~/local CONFIG_FLAGS='-D BUILD_SHARED_LIBS=ON'
+    # For ARM platform
+    make config prefix=~/local CONFIG_FLAGS='-D BUILD_SHARED_LIBS=ON -D NO_X86=1'
+    make
+    make install
+    ```
+
+    6.2 Install [METIS](https://github.com/KarypisLab/METIS):
+
+    ```bash
+    git clone https://github.com/KarypisLab/METIS.git
+    cd METIS
+    sed -i '/add_library(metis ${METIS_LIBRARY_TYPE} ${metis_sources})/ s/$/\ntarget_link_libraries(metis GKlib)/' libmetis/CMakeLists.txt
+    sed -i '/^CONFIG_FLAGS \?= / s,$, -DCMAKE_BUILD_RPATH=/usr/local/lib -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON,' Makefile
+    make config shared=1 cc=gcc prefix=~/local gklib_path=/usr/local
+    make install
+    echo 'export METIS_DLL=~/local/lib/libmetis.so' >> ~/.bashrc
+    source ~/.bashrc
+    ```
+
+7. Install dependencies of multi-machine topology partitioning on the master VM:
+
+    7.1 Clone and compile [TBR-TBS](https://github.com/tbs2022/tbs):
+    ```bash
+    git clone https://github.com/tbs2022/tbs.git
+    cd tbs
+    mkdir build
+    cd build
+    cmake .. && make
+    ```
+
+    7.2 Set global variable TBS_BIN_DIR in [driver/scripts/partition/partition_topo_pm.py](driver/scripts/partition/partition_topo_pm.py) to the build path of your TBR-TBS repository:
+    ```python
+    TBS_BIN_DIR = "/path/to/tbs/build"
+    ```
+
+    7.3 Install Gurobi optimizer, which is a necessary dependency of [TBR-TBS](https://github.com/tbs2022/tbs) topoology partitioning algorithm. Please install a *full-licensed* Gurobi optimizer (Please find help at [How do I install Gurobi Optimizer?](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer)).
 
 ## Usage
 
