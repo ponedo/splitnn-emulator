@@ -1,7 +1,7 @@
 # Code of SplitNN (APNet '25 Paper)
 
 ## Overview
-This repository provides code of experiments in our APNet '25 paper--.
+This repository provides code of experiments in our APNet '25 paper--[SplitNN: Single-Machine Network Emulation at Scale with Minute-Level Construction of 10K-Node Virtual Networks]().
 
 
 SplitNN is a new methodological framework that enables fast construction of large-scale virtual networks (VNs) for network emulation. SplitNN leverages two "splitting" methods on a physical machine to accelerate VN construction:
@@ -95,9 +95,9 @@ Before running the experiments, please setup a VM cluster including a master VM 
 
 7. Install dependencies of multi-machine topology partitioning on the master VM:
 
-    7.1 Clone and compile [TBR-TBS](https://github.com/tbs2022/tbs):
+    7.1 Clone and compile a modified version of [TBR-TBS](https://github.com/ponedo/tbs):
     ```bash
-    git clone https://github.com/tbs2022/tbs.git
+    git clone git@github.com:ponedo/tbs.git
     cd tbs
     mkdir build
     cd build
