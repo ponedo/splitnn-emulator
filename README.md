@@ -192,7 +192,14 @@ Before running the experiments, please setup a VM cluster including a master VM 
     # ["as", "large"],
     ```
 
-4. Results will be placed at the directory "driver/raw_results/result-XX-servers", in which VN construction/destruction time will be shown in setup.log/clean.log with "Operation time" entry.
+4. Run the batch_test.py script:
+    ```bash
+    cd /path/to/repository
+    source tstenv/bin/activate
+    cd driver
+    python -u batch_test.py > batch_test_log
+    ```
+    Results will be placed at the directory "driver/raw_results/result-XX-servers", in which VN construction/destruction time will be shown in setup_log.txt/clean_log.txt with "Operation time" entry.
 
 ### Measuring platform-specific parameters
 
