@@ -234,7 +234,15 @@ def get_server_best_bbns_num(sub_topo_filepath, server_config_list, i):
     return best_bbns_num
 
 
+tbs_metis_tdf, metis_tdf = None, None
+def write_tdf_to_file(filepath):
+    with open(filepath, 'w') as f:
+        f.write(f"TBS-METIS TDF: {tbs_metis_tdf}\n")
+        f.write(f"METIS TDF: {metis_tdf}\n")
+
+
 def prepare_topology(remote_machines, topos):
+    global tbs_metis_tdf, metis_tdf
     for topo in topos:
         # Generate the topology file
         topo_type = topo[0]
@@ -250,7 +258,7 @@ def prepare_topology(remote_machines, topos):
         result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
 
         # Partition the topology accross multiple physical machine (TBS) and multiple VMs within a physical machine
-        partition_topo(full_topo_filepath, server_config_list)
+        tbs_metis_tdf, metis_tdf = partition_topo(full_topo_filepath, server_config_list)
         # script_path = os.path.join(DRIVER_WORKDIR, "scripts", f"partition_topo.py")
         # partition_topology_cmd = ["python3", script_path, "-f", topo_filepath, "-n", f"{len(servers)}"]
         # result = subprocess.run(partition_topology_cmd, capture_output=True, text=True, env=env)
@@ -415,6 +423,7 @@ if __name__ == "__main__":
             print(f"Test {var_opts} skipped")
             continue # Current test has been completed before, skip current iteration
         os.makedirs(full_cur_test_log_dir, exist_ok=True)
+        write_tdf_to_file(os.path.join(full_cur_test_log_dir, "tdf.txt")) # Write TDF into full_cur_test_log_dir
 
         # Execute test commands
         time.sleep(5)
