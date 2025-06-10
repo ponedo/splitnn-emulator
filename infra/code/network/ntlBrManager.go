@@ -16,20 +16,23 @@ import (
 )
 
 type NtlBrLinkManager struct {
-	curBackBoneNum     int
-	curlinkNum         int
-	curlinkNumMutex    sync.Mutex
-	curBackBoneNs      netns.NsHandle
-	ExternalLinkOpTime time.Duration
-	hostNetns          netns.NsHandle
-	nm                 NodeManager
+	curBackBoneNum          int
+	curInternalLinkNum      int
+	curInternalLinkNumMutex sync.Mutex
+	curExternalLinkNum      int
+	curExternalLinkNumMutex sync.Mutex
+	curBackBoneNs           netns.NsHandle
+	ExternalLinkOpTime      time.Duration
+	hostNetns               netns.NsHandle
+	nm                      NodeManager
 }
 
 func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 	var err error
 
 	lm.curBackBoneNum = 0
-	lm.curlinkNum = 0
+	lm.curInternalLinkNum = 0
+	lm.curExternalLinkNum = 0
 	lm.nm = nm
 	lm.curBackBoneNs = -1
 	lm.ExternalLinkOpTime = 0
@@ -149,12 +152,15 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	defer nodejNetNs.Close()
 
-	/* Prepare other data structure */
 	if Parallel > 0 {
-		lm.curlinkNumMutex.Lock()
+		lm.curInternalLinkNumMutex.Lock()
 	}
-	lm.curlinkNum += 1
+	lm.curInternalLinkNum += 1
+	if Parallel > 0 {
+		lm.curInternalLinkNumMutex.Unlock()
+	}
 
+	/* Prepare other data structure */
 	insideVethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	insideVethNamej = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi)
 	if nodeIdi < nodeIdj {
@@ -167,9 +173,6 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 		vethNamej = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-j"
 	}
 
-	if Parallel > 0 {
-		lm.curlinkNumMutex.Unlock()
-	}
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:  brName,
@@ -264,11 +267,15 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	defer nodeiNetNs.Close()
 
-	/* Create Vxlan */
 	if Parallel > 0 {
-		lm.curlinkNumMutex.Lock()
+		lm.curExternalLinkNumMutex.Lock()
+	}
+	lm.curExternalLinkNum += 1
+	if Parallel > 0 {
+		lm.curExternalLinkNumMutex.Unlock()
 	}
 
+	/* Create Vxlan */
 	insideVethNamei = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
 	if nodeIdi < nodeIdj {
 		brName = strconv.Itoa(nodeIdi) + "-" + strconv.Itoa(nodeIdj)
@@ -280,9 +287,6 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 		vethNamei = strconv.Itoa(nodeIdj) + "-" + strconv.Itoa(nodeIdi) + "-i"
 	}
 
-	if Parallel > 0 {
-		lm.curlinkNumMutex.Unlock()
-	}
 	br := &netlink.Bridge{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:  brName,
@@ -327,6 +331,8 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
 	if err = netlink.LinkAdd(vxlanOut); err != nil {
+		fmt.Printf("failed to create vxlan interface: %v", vxlanOut)
+		fmt.Printf("Current external link num: %v", lm.curExternalLinkNum)
 		return fmt.Errorf("failed to create vxlan interface: %s", err)
 	}
 	err = netlink.LinkSetNsFd(vxlanOut, int(backboneNs))
