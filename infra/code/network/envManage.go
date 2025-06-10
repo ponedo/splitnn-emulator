@@ -15,6 +15,7 @@ import (
 	"topo_setup_test/algo"
 
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 )
 
 type Servers struct {
@@ -111,6 +112,7 @@ func ConfigEnvs(
 	setDisableIpv6(disableIpv6)
 	setParallel(parallel)
 	setKernelPtySysctl()
+	setRlimits()
 	prepareRootfs(server.DockerImageName)
 	return nil
 }
@@ -412,7 +414,29 @@ func setKernelPtySysctl() {
 	} else {
 		fmt.Printf("Successfully set net.ipv6.route.gc_thresh to %s\n", newipv6HopLimitValue)
 	}
+}
 
+func setRlimit(resource int, name string) {
+	limit := &unix.Rlimit{
+		Cur: unix.RLIM_INFINITY,
+		Max: unix.RLIM_INFINITY,
+	}
+	if err := unix.Setrlimit(resource, limit); err != nil {
+		log.Fatalf("Failed to set %s: %v", name, err)
+	}
+	fmt.Printf("Set %s to unlimited\n", name)
+}
+
+func setRlimits() {
+	var rlim unix.Rlimit
+	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
+	fmt.Printf("Before rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+
+	setRlimit(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK") // ulimit -l
+	setRlimit(unix.RLIMIT_DATA, "RLIMIT_DATA")       // ulimit -m
+
+	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
+	fmt.Printf("After rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 }
 
 func prepareRootfs(dockerImageName string) {
