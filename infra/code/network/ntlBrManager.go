@@ -335,6 +335,7 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	for {
 		err = netlink.LinkAdd(vxlanOut)
 		if err != nil && firstTimeTry {
+			fmt.Printf("Current timestamp: %s\n", time.Now().Format(time.RFC3339Nano))
 			fmt.Printf("failed to create vxlan interface: %v\n", vxlanOut)
 			fmt.Printf("Current external link num: %v\n", lm.curExternalLinkNum)
 			fmt.Printf("Retrying vxlan creation\n")
