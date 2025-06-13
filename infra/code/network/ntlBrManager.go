@@ -340,6 +340,13 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 			fmt.Printf("Current external link num: %v\n", lm.curExternalLinkNum)
 			fmt.Printf("Retrying vxlan creation\n")
 			firstTimeTry = false
+		} else if err != nil {
+			//check if the error is because the vxlan already exists
+			testVxlan, _ := netlink.LinkByName(vxlanName)
+			if testVxlan != nil && testVxlan.Type() == "vxlan" {
+				fmt.Printf("Vxlan %s already exists, skipping creation\n", vxlanName)
+				break
+			}
 		} else {
 			break
 		}
