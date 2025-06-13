@@ -347,6 +347,9 @@ func setKernelPtySysctl() {
 	ipv6RouteGcThreshPath := "/proc/sys/net/ipv6/route/gc_thresh"
 	ipv4HopLimitPath := "/proc/sys/net/ipv4/ip_default_ttl"
 	ipv6HopLimitPath := "/proc/sys/net/ipv6/conf/all/hop_limit"
+	netdevMaxBacklogPath := "/proc/sys/net/core/netdev_max_backlog"
+	soMaxConnPath := "/proc/sys/net/core/somaxconn"
+	rmemMaxPath := "/proc/sys/net/core/rmem_max"
 
 	// Desired values
 	newMaxValue := "262144"
@@ -363,6 +366,9 @@ func setKernelPtySysctl() {
 	newIpv6RouteGcThreshValue := "1024"
 	newipv4HopLimitValue := "255"
 	newipv6HopLimitValue := "255"
+	netdevMaxBacklogValue := "2000"
+	soMaxConnValue := "8192"
+	rmemMaxValue := "425984"
 
 	if err := SetSysctlValue(ptyMaxPath, newMaxValue); err != nil {
 		log.Fatalf("Error setting kernel.pty.max: %v", err)
@@ -413,6 +419,21 @@ func setKernelPtySysctl() {
 		log.Fatalf("Error setting net.ipv6.route.gc_thresh: %v", err)
 	} else {
 		fmt.Printf("Successfully set net.ipv6.route.gc_thresh to %s\n", newipv6HopLimitValue)
+	}
+	if err := SetSysctlValue(netdevMaxBacklogPath, netdevMaxBacklogValue); err != nil {
+		log.Fatalf("Error setting net.core.netdev_max_backlog: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.core.netdev_max_backlog to %s\n", netdevMaxBacklogValue)
+	}
+	if err := SetSysctlValue(soMaxConnPath, soMaxConnValue); err != nil {
+		log.Fatalf("Error setting net.core.somaxconn: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.core.somaxconn to %s\n", soMaxConnValue)
+	}
+	if err := SetSysctlValue(rmemMaxPath, rmemMaxValue); err != nil {
+		log.Fatalf("Error setting net.core.rmem_max: %v", err)
+	} else {
+		fmt.Printf("Successfully set net.core.rmem_max to %s\n", rmemMaxValue)
 	}
 }
 

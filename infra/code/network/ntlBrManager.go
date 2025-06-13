@@ -330,11 +330,20 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	if err != nil {
 		return fmt.Errorf("failed to netns.Set: %s", err)
 	}
-	if err = netlink.LinkAdd(vxlanOut); err != nil {
-		fmt.Printf("failed to create vxlan interface: %v", vxlanOut)
-		fmt.Printf("Current external link num: %v", lm.curExternalLinkNum)
-		return fmt.Errorf("failed to create vxlan interface: %s", err)
+	/* Try add vxlanOut till err is nil */
+	firstTimeTry := true
+	for {
+		err = netlink.LinkAdd(vxlanOut)
+		if err != nil && firstTimeTry {
+			fmt.Printf("failed to create vxlan interface: %v\n", vxlanOut)
+			fmt.Printf("Current external link num: %v\n", lm.curExternalLinkNum)
+			fmt.Printf("Retrying vxlan creation\n")
+			firstTimeTry = false
+		} else {
+			break
+		}
 	}
+
 	err = netlink.LinkSetNsFd(vxlanOut, int(backboneNs))
 	if err != nil {
 		return fmt.Errorf("failed to link set nsfd: %s", err)
