@@ -49,8 +49,8 @@ para_table = {
         "arm64": 0.02624,  # Example value, adjust as needed
     },
     "Z": {
-        "amd64": 0.01,  # Example value, adjust as needed
-        "arm64": 0.01,  # Example value, adjust as needed
+        "amd64": 0.0127,  # Example value, adjust as needed
+        "arm64": 0.0037,  # Example value, adjust as needed
     }
 }
 
