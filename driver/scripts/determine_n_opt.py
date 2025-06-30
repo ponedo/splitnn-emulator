@@ -1,16 +1,23 @@
 # Determine the best VM number for multi-VM splitting based on modeling data
 import argparse
+import csv
+import os
 
 ########################### Arguments ###########################
 parser = argparse.ArgumentParser(description='A script to calculate optimal VM number n_opt for multi-VM splitting')
 parser.add_argument('-p', '--platform', type=str, required=True, help='Platform type (amd64 or arm64)')
 parser.add_argument('-E', '--E-max-filepath', type=str, required=True, help='Path to the E_max data file')
-parser.add_argument('-m', '--m-req', type=int, required=True, help='Total memory required for the emulation')
+parser.add_argument('-m', '--m-req', type=int, required=True, help='Total memory required for the emulation (GB)')
+parser.add_argument('-M', '--m-platform', type=int, required=True, help='Available memory on the platform (GB)')
+parser.add_argument('-s', '--over-subscription', type=float, required=True, help='Maximum over-subscription ratio')
+
 args = parser.parse_args()
 
 platform = args.platform # 'amd64' or 'arm64'
 E_max_filepath = args.E_max_filepath
 m_req = args.m_req
+m_platform = args.m_platform
+over_subscription = args.over_subscription
 
 if platform not in ["amd64", "arm64"]:
     raise ValueError("Platform must be either 'amd64' or 'arm64'.")
@@ -119,7 +126,7 @@ def search_n_opt_and_m_conf():
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
-            if n * m_conf < m_req:
+            if n * m_conf < m_req or n * m_conf > m_platform * over_subscription:
                 continue
             gain1 = Gain1(n, m_conf)
             theta_m_conf = para_table["theta_m_conf"][platform][m_conf]
@@ -150,3 +157,18 @@ if __name__ == "__main__":
 
     # Print the optimal n and m_conf
     print(f"Optimal n: {n_opt}\tOptimal m_conf: {m_conf_opt}\tm_extra: {m_extra_opt}\tMaximum Gain1: {max_gain1:.4f}")
+
+    # Output the optimal n and m_conf to a csv file
+    # name the output file as "n_m_conf_search_result_{platform1}.csv", place it at E_max_filepath directory
+    output_dir = os.path.dirname(E_max_filepath)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    output_filepath = os.path.join(output_dir, f"n_m_conf_search_result_{platform}.csv")
+    with open(output_filepath, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["n", "m_conf", "m_extra", "Gain1"])
+        for n, m_conf, m_extra, gain1 in search_results:
+            # Only keep two decimal places for m_extra and gain1
+            m_extra = round(gain1, 2)
+            gain1 = round(gain1, 2)
+            writer.writerow([n, m_conf, m_extra, gain1])
