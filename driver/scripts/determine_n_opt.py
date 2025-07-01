@@ -169,6 +169,6 @@ if __name__ == "__main__":
         writer.writerow(["n", "m_conf", "m_extra", "Gain1"])
         for n, m_conf, m_extra, gain1 in search_results:
             # Only keep two decimal places for m_extra and gain1
-            m_extra = round(gain1, 2)
+            m_extra = round(m_extra, 2)
             gain1 = round(gain1, 2)
             writer.writerow([n, m_conf, m_extra, gain1])
