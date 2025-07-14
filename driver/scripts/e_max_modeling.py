@@ -130,7 +130,7 @@ if __name__ == "__main__":
     print("Starting partitioning runs...")
     print(f"Number of runs: {run_num}")
     print(f"Topology configurations: {topologies}")
-    print(f"Node range: {n_range}")
+    print(f"VM number range: {n_range}")
     print("-" * 20)
 
     # Prepare the topologies

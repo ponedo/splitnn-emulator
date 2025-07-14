@@ -2,6 +2,7 @@
 import argparse
 import csv
 import os
+import math
 
 ########################### Arguments ###########################
 parser = argparse.ArgumentParser(description='A script to calculate optimal VM number n_opt for multi-VM splitting')
@@ -10,6 +11,7 @@ parser.add_argument('-E', '--E-max-filepath', type=str, required=True, help='Pat
 parser.add_argument('-m', '--m-req', type=int, required=True, help='Total memory required for the emulation (GB)')
 parser.add_argument('-M', '--m-platform', type=int, required=True, help='Available memory on the platform (GB)')
 parser.add_argument('-s', '--over-subscription', type=float, required=True, help='Maximum over-subscription ratio')
+parser.add_argument('-g', '--gain-type', type=str, required=True, choices=['gain1', 'gain2'], help='Type of gain to optimize for')
 
 args = parser.parse_args()
 
@@ -18,6 +20,7 @@ E_max_filepath = args.E_max_filepath
 m_req = args.m_req
 m_platform = args.m_platform
 over_subscription = args.over_subscription
+gain_type = args.gain_type
 
 if platform not in ["amd64", "arm64"]:
     raise ValueError("Platform must be either 'amd64' or 'arm64'.")
@@ -61,7 +64,13 @@ para_table = {
     }
 }
 
-V_exp = (10000 + 9472 + 12817) / 3
+topos = {
+    "grid": (10000, 20000),
+    "clos": (9472, 24576),
+    "as": (12817, 36234),
+}
+
+V_avg = sum(topo[0] for topo in topos.values()) / len(topos)
 X = para_table["X"][platform]
 Y = para_table["Y"][platform]
 Z = para_table["Z"][platform]
@@ -73,102 +82,173 @@ search_m_conf_range = [8, 25, 50, 100, 200, 300, 400, 500]  # Range of m_conf to
 def read_E_max_data():
     # This function should read the E_max modeling data from a file or database
     # For now, we will just return a placeholder value
+    topo_e_max_data = {}
+    avg_e_max_data = []
+
+    topo_results_hint = "Results averaged across runs:"
+    avg_result_hint = "Results averaged across runs and topos: "
+    sep_line = "--------------------"
+
+    in_topo_results = False
+
     with open(E_max_filepath, 'r') as f:
-        # Find the line starting with the hint "Results averaged across runs and topos: "
+        # Find the line starting with the hints
         # After the hint there should be a list of E_max values, wrapped with square brackets,
         # e.g., "Results averaged across runs and topos: [10000, 9998, 9996, ...]"
         for line in f:
-            if line.startswith("Results averaged across runs and topos: "):
+            if in_topo_results:
+                if line.startswith(sep_line):
+                    in_topo_results = False
+                    continue
                 # Extract the string after the hint
-                e_max_str = line.split("Results averaged across runs and topos: ")[1].strip()
+                splited_line = line.split(": ")
+                topo = splited_line[0].strip()
+                topo_e_max_str = splited_line[1].strip()
                 # Convert the string to a list of integers
-                e_max_data = eval(e_max_str)
-                return e_max_data
+                topo_e_max_data[topo] = eval(topo_e_max_str)
+                continue
+            if line.startswith(topo_results_hint):
+                in_topo_results = True
+                continue
+            if line.startswith(avg_result_hint):
+                # Extract the string after the hint
+                avg_e_max_str = line.split(avg_result_hint)[1].strip()
+                # Convert the string to a list of integers
+                avg_e_max_data = eval(avg_e_max_str)
+                break
+                
     # If the file does not contain the expected line, return a default value
-    return [10000-2*i for i in range(1, 129)]
+    return topo_e_max_data, avg_e_max_data
 
-E_max_data = read_E_max_data()  # Placeholder function to read E_max data
+topo_e_max_data, avg_e_max_data = read_E_max_data()  # Placeholder function to read E_max data
 
-def E_max(n):
-    return E_max_data[n-1] if 1 <= n <= len(E_max_data) else None
+def avg_E_max(n):
+    return avg_e_max_data[n-1] if 1 <= n <= len(avg_e_max_data) else None
 
-def compute_T_vm(n):
-    # Compute T_vm based on E_max
-    E_max_n = E_max(n)
-    T_vm_n = E_max_n * V_exp / n * (X + Z) + E_max_n ** 2 * Y
-    return T_vm_n
-T_vm = lambda n: compute_T_vm(n)
+def topo_E_max(n, topo):
+    return topo_e_max_data[topo][n-1] if topo in topo_e_max_data and 1 <= n <= len(topo_e_max_data[topo]) else None
 
-def compute_M_vm(n, m_conf):
+def compute_T_mvs(n, topo):
+    # Compute T_mvs based on E_max
+    avg_E_max_n = avg_E_max(n)
+    topo_V = topos[topo][0]
+    T_mvs_n = avg_E_max_n * (topo_V / n * X + Z) + avg_E_max_n ** 2 * Y / 2
+    return T_mvs_n
+T_mvs = lambda n, topo: compute_T_mvs(n, topo)
+
+def compute_M_mvs(n, m_conf):
     theta_m_conf = para_table["theta_m_conf"][platform][m_conf]
     return n * theta_m_conf
-M_vm = lambda n, m_conf: compute_M_vm(n, m_conf)
+M_mvs = lambda n, m_conf: compute_M_mvs(n, m_conf)
 
-def compute_gain1(n, m_conf):
-    numerator = (T_vm(1) - T_vm(n)) / T_vm(1)
-    dominator = M_vm(n, m_conf) / m_req
+def compute_T_sn(n, topo):
+    # Compute T_sn based on E_max
+    topo_V = topos[topo][0]
+    topo_E_max_n = topo_E_max(n, topo)
+    T_sn_n_topo = topo_E_max_n * (topo_V / n * X + Z) + topo_E_max_n * math.sqrt(2 * topo_E_max_n * X * Y)
+    return T_sn_n_topo
+T_sn = lambda n, topo: compute_T_sn(n, topo)
+
+def compute_gain1(n, m_conf, topo):
+    numerator = (T_mvs(1, topo) - T_mvs(n, topo)) / T_mvs(1, topo)
+    dominator = M_mvs(n, m_conf) / m_req
     gain1 = numerator / dominator
     return gain1
-Gain1 = lambda n, m_conf: compute_gain1(n, m_conf)
+Gain1 = lambda n, m_conf, topo: compute_gain1(n, m_conf, topo)
 
-def compute_gain2(n, m_conf):
-    pass
-Gain2 = lambda n, m_conf: compute_gain2(n, m_conf)
+def compute_gain2(n, m_conf, topo):
+    numerator = (T_sn(1, topo) - T_sn(n, topo)) / T_sn(1, topo)
+    dominator = M_mvs(n, m_conf) / m_req
+    gain2 = numerator / dominator
+    return gain2
+Gain2 = lambda n, m_conf, topo: compute_gain2(n, m_conf, topo)
 
-def search_n_opt_and_m_conf():
+if gain_type == 'gain1':
+    Gain = Gain1
+elif gain_type == 'gain2':
+    Gain = Gain2
+else:
+    raise ValueError("Invalid gain type. Use 'gain1' or 'gain2'.")
+
+def search_n_opt_and_m_conf_for_topo(gain_type, topo):
     # Search for the optimal n and m_conf value that maximizes Gain1
     # Constraint: n * m_conf >= m_req
     n_opt = 1
     m_conf_opt = 8
     m_extra_opt = n_opt * para_table["theta_m_conf"][platform][m_conf_opt]
-    max_gain1 = Gain1(1, 8)
+    max_gain = Gain(n_opt, m_conf_opt, topo)
     # Store all search results
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
             if n * m_conf < m_req or n * m_conf > m_platform * over_subscription:
                 continue
-            gain1 = Gain1(n, m_conf)
+            gain = Gain(n, m_conf, topo)
             theta_m_conf = para_table["theta_m_conf"][platform][m_conf]
             m_extra = n * theta_m_conf
-            if gain1 > max_gain1:
-                max_gain1 = gain1
+            if gain > max_gain:
+                max_gain = gain
                 n_opt = n
                 m_conf_opt = m_conf
                 m_extra_opt = m_extra
-            search_results.append((n, m_conf, m_extra, gain1))
-    optimal_result = (n_opt, m_conf_opt, m_extra_opt, max_gain1)
+            search_results.append((n, m_conf, m_extra, gain))
+    optimal_result = (n_opt, m_conf_opt, m_extra_opt, max_gain)
     return search_results, optimal_result
 
-############################## Functions to Compute Gain ###########################
+def search_n_opt_and_m_conf(gain_type):
+    search_results = {}
+    optimal_results = {}
+    for topo in topos:
+        topo_search_results, topo_optimal_result = \
+            search_n_opt_and_m_conf_for_topo(gain_type, topo)
+        search_results[topo] = topo_search_results
+        optimal_results[topo] = topo_optimal_result
+    return search_results, optimal_results
+
+def output_results(search_results, gain_type):
+    # Output the optimal n and m_conf for each topology to a csv file into separate files
+    output_dir = os.path.dirname(E_max_filepath)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for topo in topos:
+        output_filepath = os.path.join(output_dir, f"{gain_type}_result_{topo}_{platform}.csv")
+        with open(output_filepath, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["n", "m_conf", "m_extra", "Gain"])
+            for n, m_conf, m_extra, gain in search_results[topo]:
+                # Only keep two decimal places for m_extra and gain
+                m_extra = round(m_extra, 2)
+                gain = round(gain, 2)
+                writer.writerow([n, m_conf, m_extra, gain])
+    # output_filepath = os.path.join(output_dir, f"{gain_type}_result_{platform}.csv")
+    # with open(output_filepath, 'w', newline='') as csvfile:
+    #     writer = csv.writer(csvfile)
+    #     writer.writerow(["n", "m_conf", "m_extra", "Gain"])
+    #     for n, m_conf, m_extra, gain in search_results:
+    #         # Only keep two decimal places for m_extra and gain
+    #         m_extra = round(m_extra, 2)
+    #         gain = round(gain, 2)
+    #         writer.writerow([n, m_conf, m_extra, gain])
+
+####################################################################################
 
 if __name__ == "__main__":
     # Read E_max modeling data
     E_max_data = read_E_max_data()
 
-    # Compute the optimal n
-    search_results, (n_opt, m_conf_opt, m_extra_opt, max_gain1) = search_n_opt_and_m_conf()
+    # Compute the optimal n and m_conf for each topology
+    search_results, optimal_results = search_n_opt_and_m_conf(args.gain_type)
 
-    # Print the search results, sorted by Gain1
-    search_results.sort(key=lambda x: x[3], reverse=True)
-    print("\nSearch Results (sorted by Gain1):")
-    for n, m_conf, m_extra, gain1 in search_results:
-        print(f"n: {n}\tm_conf: {m_conf}\tm_extra: {m_extra:.2f}\tGain1: {gain1:.4f}")
+    # Print the search results for each topology
+    for topo, results in search_results.items():
+        print(f"\nSearch Results for {topo} (sorted by Gain):")
+        results.sort(key=lambda x: x[3], reverse=True)
+        for n, m_conf, m_extra, gain in results:
+            print(f"n: {n}\tm_conf: {m_conf}\tm_extra: {m_extra:.2f}\tGain: {gain:.4f}")
 
-    # Print the optimal n and m_conf
-    print(f"Optimal n: {n_opt}\tOptimal m_conf: {m_conf_opt}\tm_extra: {m_extra_opt}\tMaximum Gain1: {max_gain1:.4f}")
+        # Print the optimal n and m_conf for this topology
+        n_opt, m_conf_opt, m_extra_opt, max_gain2 = optimal_results[topo]
+        print(f"Optimal n for {topo}: {n_opt}\tOptimal m_conf: {m_conf_opt}\tm_extra: {m_extra_opt:.2f}\tMaximum Gain: {max_gain2:.4f}")
 
-    # Output the optimal n and m_conf to a csv file
-    # name the output file as "n_m_conf_search_result_{platform1}.csv", place it at E_max_filepath directory
-    output_dir = os.path.dirname(E_max_filepath)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    output_filepath = os.path.join(output_dir, f"n_m_conf_search_result_{platform}.csv")
-    with open(output_filepath, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["n", "m_conf", "m_extra", "Gain1"])
-        for n, m_conf, m_extra, gain1 in search_results:
-            # Only keep two decimal places for m_extra and gain1
-            m_extra = round(m_extra, 2)
-            gain1 = round(gain1, 2)
-            writer.writerow([n, m_conf, m_extra, gain1])
+    # Output the results to a csv file
+    output_results(search_results, args.gain_type)
