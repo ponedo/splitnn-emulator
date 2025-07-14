@@ -1,8 +1,8 @@
 import os
 import json
 
-DRIVER_WORKDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "driver")
-AS_DATA_DIR = os.path.join(DRIVER_WORKDIR, "data")
+COORDINATOR_WORKDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "coordinator")
+AS_DATA_DIR = os.path.join(COORDINATOR_WORKDIR, "data")
 AS_TOPO_CONFIG_FILEPATH = os.path.join(AS_DATA_DIR, "as_topo_config.json")
 
 def get_isolated_node_num(n):

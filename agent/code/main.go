@@ -7,10 +7,10 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"splitnn_agent/algo"
+	"splitnn_agent/network"
 	"syscall"
 	"time"
-	"topo_setup_test/algo"
-	"topo_setup_test/network"
 	"unsafe"
 
 	"golang.org/x/sys/unix"

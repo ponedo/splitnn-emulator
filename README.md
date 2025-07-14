@@ -16,9 +16,9 @@ With multi-VM splitting and multi-netns splitting architecture, construction of 
 
 The project contains following directories:
 
-1. infra: a Golang project that construct/destruct virtual networks on a slave VM. 
+1. agent: a Golang project that construct/destruct virtual networks on a slave VM. 
 
-2. driver: a python program run by the master VM that (1) distribute topology infomation and reap VN construction/destruction time-costs from slave VMs; (2) manage experiment workflow.
+2. coordinator: a python program run by the master VM that (1) distribute topology infomation and reap VN construction/destruction time-costs from slave VMs; (2) manage experiment workflow.
 
 3. dataproc: a python program that output tables and figures with experimental results (just ignore it if you feel it hard to use).
 
@@ -28,19 +28,19 @@ Before running the experiments, please setup a VM cluster including a master VM 
 
 1. Git clone this repo on all VMs.
 
-2. Configure VM infomation in [driver/server_config.json](driver/server_config.json). Example:
+2. Configure VM infomation in [coordinator/server_config.json](coordinator/server_config.json). Example:
 
     ```json
     "ipAddr": "10.10.30.144", // IP address of the slave VM
     "user": "cnic",
     "password": "XXXXXXXXXXX",
     "phyIntf": "enp1s0", // The network interface where ipAddr is bounded
-    "infraWorkDir": "/home/cnic/split-nn/infra", // The path to the "infra" directory in this project on your VM
+    "agentWorkDir": "/home/cnic/split-nn/agent", // The path to the "agent" directory in this project on your VM
     "dockerImageName": "ponedo/bird-ubuntu22", // The image name of vnodes, can be arbitrary image on dockerhub or your own hub
     "kernFuncsToMonitor":  [
         ["setup", "cctr", "chroot_fs_refs"],
-        ["setup", "topo_setup_test", "wireless_nlevent_flush"],
-        ["setup", "topo_setup_test", "fib6_clean_tree"],
+        ["setup", "splitnn_agent", "wireless_nlevent_flush"],
+        ["setup", "splitnn_agent", "fib6_clean_tree"],
         ["clean", "", "br_vlan_flush"]
     ], // Used for recording kernel function time-cost. Just keep them as are.
     "server_best_bbns_factor": 2.353, // The measured k_opt argument, which influences the number of backbone namespaces when constructing a VN (see "Measuring platform-specific parameters" subsection below and check the paper for more details).
@@ -104,7 +104,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
     cmake .. && make
     ```
 
-    7.2 Set global variable TBS_BIN_DIR in [driver/scripts/partition/partition_topo_pm.py](driver/scripts/partition/partition_topo_pm.py) to the build path of your TBR-TBS repository:
+    7.2 Set global variable TBS_BIN_DIR in [coordinator/scripts/partition/partition_topo_pm.py](coordinator/scripts/partition/partition_topo_pm.py) to the build path of your TBR-TBS repository:
     ```python
     TBS_BIN_DIR = "/path/to/tbs/build"
     ```
@@ -115,7 +115,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
 
 ### Run VN construction/destruction experiements
 
-1. On the master VM (1) change into "driver" directory; (2) switch into "tstenv" python virtual environment.
+1. On the master VM (1) change into "coordinator" directory; (2) switch into "tstenv" python virtual environment.
 
 2. **(Important)** Switch into "rigid" branch (dedicated branch for experiments) of this repository:
 
@@ -123,7 +123,7 @@ Before running the experiments, please setup a VM cluster including a master VM 
     git checkout rigid
     ```
 
-3. Modify the "driver/batch_test.py" script on demand:
+3. Modify the "coordinator/batch_test.py" script on demand:
 
     3.1. For uni-BBNS experiments, set USE_BEST_BBNS_NUM to False, and set BBNS number to 1.
 
@@ -196,10 +196,10 @@ Before running the experiments, please setup a VM cluster including a master VM 
     ```bash
     cd /path/to/repository
     source tstenv/bin/activate
-    cd driver
+    cd coordinator
     python -u batch_test.py > batch_test_log
     ```
-    Results will be placed at the directory "driver/raw_results/result-XX-servers", in which VN construction/destruction time will be shown in setup_log.txt/clean_log.txt with "Operation time" entry.
+    Results will be placed at the directory "coordinator/raw_results/result-XX-servers", in which VN construction/destruction time will be shown in setup_log.txt/clean_log.txt with "Operation time" entry.
 
 ### Measuring platform-specific parameters
 
@@ -208,20 +208,20 @@ Before running the experiments, please setup a VM cluster including a master VM 
     ```bash
     cd /path/to/repository
     git checkout measure
-    cd infra
+    cd agent
     make
     ```
 
-2. Modify infra/server_config. Set only one slave VM (recommend using master VM as the slave for measurement)
+2. Modify agent/server_config. Set only one slave VM (recommend using master VM as the slave for measurement)
 
 3. Execute measurement for parameter *X* (increasing rate of vlink construction time w.r.t. the number of system-wide netns’es):
     ```bash
-    bin/topo_setup_test -o node-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
+    bin/splitnn_agent -o node-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
     ```
-    the results will be written in infra/tmp/node-measure_log.txt.
+    the results will be written in agent/tmp/node-measure_log.txt.
 
 4. Execute measurement for parameter *Y* (ncreasing rate of per-vlink construction time with respect to the pre-existing vlink number in the BBNS that carries the vlink.):
     ```bash
-    bin/topo_setup_test -o link-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
+    bin/splitnn_agent -o link-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
     ```
-    the results will be written in infra/tmp/link-measure_log.txt.
+    the results will be written in agent/tmp/link-measure_log.txt.

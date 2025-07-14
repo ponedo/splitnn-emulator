@@ -8,11 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"splitnn_agent/algo"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-	"topo_setup_test/algo"
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
@@ -24,7 +24,7 @@ type Servers struct {
 
 type Server struct {
 	IPAddr             string     `json:"ipAddr"`
-	WorkDir            string     `json:"infraWorkDir"`
+	WorkDir            string     `json:"agentWorkDir"`
 	PhyIntf            string     `json:"phyIntf"`
 	DockerImageName    string     `json:"dockerImageName"`
 	KernFuncsToMonitor [][]string `json:"kernFuncsToMonitor"`

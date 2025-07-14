@@ -71,7 +71,7 @@ def reap_logs(log_dir):
     for server in servers:
         remote_machine = RemoteMachine(
             server["ipAddr"], server["user"],
-            server["password"], working_dir=server["infraWorkDir"])
+            server["password"], working_dir=server["agentWorkDir"])
         machine = remote_machine.connect()
         remote_machines.append(machine)
 
@@ -79,7 +79,7 @@ def reap_logs(log_dir):
     results_dir = log_dir
     directories = {
         server["ipAddr"]: (
-            os.path.join(server["infraWorkDir"], "log"), results_dir) \
+            os.path.join(server["agentWorkDir"], "log"), results_dir) \
         for server in servers
     }
 

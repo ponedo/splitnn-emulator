@@ -5,7 +5,7 @@
             "user": "cnic",
             "password": "1qazXSW@",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/infra",
+            "agentWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/agent",
             "dockerImageName": "ponedo/bird-ubuntu22",
             "kernFuncsToMonitor":  [
                 ["setup", "cctr", "chroot_fs_refs"],
@@ -21,7 +21,7 @@
             "user": "cnic",
             "password": "1qazXSW@",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/infra",
+            "agentWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/agent",
             "dockerImageName": "ponedo/bird-ubuntu22",
             "kernFuncsToMonitor":  [
                 ["setup", "cctr", "chroot_fs_refs"],
@@ -37,7 +37,7 @@
             "user": "cnic",
             "password": "1qazXSW@",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/infra",
+            "agentWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/agent",
             "dockerImageName": "ponedo/bird-ubuntu22",
             "kernFuncsToMonitor":  [
                 ["setup", "cctr", "chroot_fs_refs"],
@@ -53,7 +53,7 @@
             "user": "cnic",
             "password": "1qazXSW@",
             "phyIntf": "enp1s0",
-            "infraWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/infra",
+            "agentWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/agent",
             "dockerImageName": "ponedo/bird-ubuntu22",
             "kernFuncsToMonitor":  [
                 ["setup", "cctr", "chroot_fs_refs"],

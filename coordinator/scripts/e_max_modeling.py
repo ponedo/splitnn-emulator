@@ -8,11 +8,11 @@ import multiprocessing
 
 ############################## constants ##############################
 
-DRIVER_SCRIPT_WORKDIR = os.path.dirname(os.path.abspath(__file__))
-DRIVER_WORKDIR = os.path.join(DRIVER_SCRIPT_WORKDIR, "..")
-RESULTS_DIR = os.path.join(DRIVER_WORKDIR, "..", "results")
-os.chdir(DRIVER_WORKDIR) # Change current working directory
-LOCAL_TOPO_DIR = os.path.join(DRIVER_WORKDIR, "topo")
+COORDINATOR_SCRIPT_WORKDIR = os.path.dirname(os.path.abspath(__file__))
+COORDINATOR_WORKDIR = os.path.join(COORDINATOR_SCRIPT_WORKDIR, "..")
+RESULTS_DIR = os.path.join(COORDINATOR_WORKDIR, "..", "results")
+os.chdir(COORDINATOR_WORKDIR) # Change current working directory
+LOCAL_TOPO_DIR = os.path.join(COORDINATOR_WORKDIR, "topo")
 
 ############################ script config ############################
 
@@ -36,7 +36,7 @@ def prepare_topologies():
         topo_type = topo[0]
         full_topo_filename = get_full_topo_filename(topo)
         full_topo_filepath = os.path.join(LOCAL_TOPO_DIR, full_topo_filename)
-        generate_topo_type_script_path = os.path.join(DRIVER_WORKDIR, "scripts", "topo", f"generate_{topo_type}_topo.py")
+        generate_topo_type_script_path = os.path.join(COORDINATOR_WORKDIR, "scripts", "topo", f"generate_{topo_type}_topo.py")
         try:
             generate_topology_cmd = \
                 ["python3", generate_topo_type_script_path] + topo[1:] + [full_topo_filepath]

@@ -16,15 +16,15 @@ from util.exec_utils import *
 
 ############################ Constants ###############################
 
-DRIVER_WORKDIR = os.path.dirname(os.path.abspath(__file__))
-os.chdir(DRIVER_WORKDIR) # Change cuurent working directory
+COORDINATOR_WORKDIR = os.path.dirname(os.path.abspath(__file__))
+os.chdir(COORDINATOR_WORKDIR) # Change cuurent working directory
 
 # REPEAT_TIME = 1
 SERVER_CONFIG_PATH = "server_config.json"
-INFRA_BIN_PATH = "bin/topo_setup_test"
-INFRA_TMP_PATH = "tmp"
-INFRA_TOPO_PATH = "tmp/topo"
-INFRA_MNT_DIR = "tmp/mnt"
+AGENT_BIN_PATH = "bin/splitnn_agent"
+AGENT_TMP_PATH = "tmp"
+AGENT_TOPO_PATH = "tmp/topo"
+AGENT_MNT_DIR = "tmp/mnt"
 LOCAL_TOPO_DIR = "topo"
 LOCAL_MNT_DIR = "mnt"
 LOCAL_EXEC_CONFIG_PATH = "exec_config.json"
@@ -71,18 +71,18 @@ def connect_remote_machines(server_config_list):
     for server in server_config_list:
         remote_machine = RemoteMachine(
             server["ipAddr"], server["user"],
-            server["password"], working_dir=server["infraWorkDir"])
+            server["password"], working_dir=server["agentWorkDir"])
         machine = remote_machine.connect()
         remote_machines.append(machine)
     return remote_machines
 
 
 def prepare_env_on_remote_machines(remote_machines, server_config_list):
-    server_config_src_path = os.path.join(DRIVER_WORKDIR, SERVER_CONFIG_PATH)
+    server_config_src_path = os.path.join(COORDINATOR_WORKDIR, SERVER_CONFIG_PATH)
     server_config_src_dst_paths = {
         server["ipAddr"]: (
             server_config_src_path,
-            os.path.join(server["infraWorkDir"], SERVER_CONFIG_PATH),
+            os.path.join(server["agentWorkDir"], SERVER_CONFIG_PATH),
             False
         ) for server in server_config_list
     }
@@ -93,7 +93,7 @@ def prepare_env_on_remote_machines(remote_machines, server_config_list):
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
-                "make", server["infraWorkDir"], None, False
+                "make", server["agentWorkDir"], None, False
             ) for server in server_config_list
         }
     )
@@ -500,11 +500,11 @@ def generate_topology(shells):
 def prepare_topology(remote_machines):
     topo = ["shells"]
     full_topo_filename = get_full_topo_filename(topo)
-    full_topo_filepath = os.path.join(DRIVER_WORKDIR, "topo", full_topo_filename)
+    full_topo_filepath = os.path.join(COORDINATOR_WORKDIR, "topo", full_topo_filename)
 
     # Partition topology
     partition_graph(full_topo_filepath, len(server_config_list))
-    # script_path = os.path.join(DRIVER_WORKDIR, "scripts", f"partition_topo.py")
+    # script_path = os.path.join(COORDINATOR_WORKDIR, "scripts", f"partition_topo.py")
     # partition_topology_cmd = ["python3", script_path, "-f", topo_filepath, "-n", f"{len(servers)}"]
     # result = subprocess.run(partition_topology_cmd, capture_output=True, text=True, env=env)
 
@@ -513,7 +513,7 @@ def prepare_topology(remote_machines):
     for i, server in enumerate(server_config_list):
         sub_topo_filename = get_sub_topo_filename(topo, i)
         sub_topo_src_filepath = os.path.join(os.path.dirname(full_topo_filepath), sub_topo_filename)
-        sub_topo_dst_filepath = os.path.join(server["infraWorkDir"], INFRA_TOPO_PATH, sub_topo_filename)
+        sub_topo_dst_filepath = os.path.join(server["agentWorkDir"], AGENT_TOPO_PATH, sub_topo_filename)
         sub_topo_src_dst_filepaths[server["ipAddr"]] = \
             (sub_topo_src_filepath, sub_topo_dst_filepath, False)
     send_file_to_multiple_machines(
@@ -530,14 +530,14 @@ def prepare_mnt_dir(remote_machines, topo_name, node_infos):
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
-                f"rm -rf {INFRA_MNT_DIR}", server["infraWorkDir"], None, True
+                f"rm -rf {AGENT_MNT_DIR}", server["agentWorkDir"], None, True
             ) for server in server_config_list
         }
     )
 
     # Get all sub topologies
     full_topo_filename = get_full_topo_filename(topo)
-    full_topo_filepath = os.path.join(DRIVER_WORKDIR, "topo", full_topo_filename)
+    full_topo_filepath = os.path.join(COORDINATOR_WORKDIR, "topo", full_topo_filename)
     sub_topo_src_dst_filepaths = {}
     for i, server in enumerate(server_config_list):
         # Get node list for the sub topo
@@ -555,7 +555,7 @@ def prepare_mnt_dir(remote_machines, topo_name, node_infos):
             generate_one_node_mnt_dir(node_id, node_mnt_dir, node_infos[node_id], mnt_config)
         # Output mnt_config.json
         output_dict_as_json(os.path.join(server_mnt_dir, "mnt_config.json"), mnt_config)
-        dst_mnt_dir_path = os.path.join(server["infraWorkDir"], INFRA_TMP_PATH, "mnt")
+        dst_mnt_dir_path = os.path.join(server["agentWorkDir"], AGENT_TMP_PATH, "mnt")
         sub_topo_src_dst_filepaths[server["ipAddr"]] = \
             (server_mnt_dir, dst_mnt_dir_path, True)
     send_file_to_multiple_machines(
@@ -569,7 +569,7 @@ def prepare_exec_config(remote_machines, topo_name, node_infos):
 
     # Get all sub topologies
     full_topo_filename = get_full_topo_filename(topo)
-    full_topo_filepath = os.path.join(DRIVER_WORKDIR, "topo", full_topo_filename)
+    full_topo_filepath = os.path.join(COORDINATOR_WORKDIR, "topo", full_topo_filename)
     sub_topo_src_dst_filepaths = {}
     for i, server in enumerate(server_config_list):
         # Get node list for the sub topo
@@ -585,7 +585,7 @@ def prepare_exec_config(remote_machines, topo_name, node_infos):
             generate_one_node_routerup_exec_entry(node_id, node_infos[node_id], exec_config)
         # Output mnt_config.json
         output_dict_as_json("exec_config.json", exec_config)
-        dst_exec_config_path = os.path.join(server["infraWorkDir"], INFRA_TMP_PATH, "exec_config.json")
+        dst_exec_config_path = os.path.join(server["agentWorkDir"], AGENT_TMP_PATH, "exec_config.json")
         sub_topo_src_dst_filepaths[server["ipAddr"]] = \
             ("exec_config.json", dst_exec_config_path, True)
     send_file_to_multiple_machines(

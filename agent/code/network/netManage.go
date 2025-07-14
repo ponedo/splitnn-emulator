@@ -3,8 +3,8 @@ package network
 import (
 	"fmt"
 	"os"
+	"splitnn_agent/algo"
 	"time"
-	"topo_setup_test/algo"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"

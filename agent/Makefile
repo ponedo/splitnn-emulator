@@ -1,5 +1,5 @@
 # Variables
-BINARY_NAME := topo_setup_test
+BINARY_NAME := splitnn_agent
 BIN_DIR := bin
 SRC_DIR := code
 

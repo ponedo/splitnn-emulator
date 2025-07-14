@@ -110,11 +110,11 @@ def inspect_one_result_dir(result_dir):
     print(f"Inspecting walk results")
     walk_results = analyze_log(os.path.join(
         result_dir, "server0", "kern_func",
-        "topo_setup_test--fib6_clean_tree.txt"))
+        "splitnn_agent--fib6_clean_tree.txt"))
     print(f"Inspecting flush results")
     flush_results = analyze_log(os.path.join(
         result_dir, "server0", "kern_func",
-        "topo_setup_test--wireless_nlevent_flush.txt"))
+        "splitnn_agent--wireless_nlevent_flush.txt"))
     return walk_results, flush_results
 
 

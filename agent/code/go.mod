@@ -1,4 +1,4 @@
-module topo_setup_test
+module splitnn_agent
 
 go 1.22.6
 
