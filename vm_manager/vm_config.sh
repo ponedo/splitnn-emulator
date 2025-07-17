@@ -3,8 +3,9 @@ RAM=500000 # Default memory in KiB per VM
 MAX_VCPUS=128 # Maximum number of vCPUs per VM. Please set this to the number of CPU cores on the host
 
 # Base image configuration
+OS_VARIANT="ubuntu22.04"
 BACKING_DISK="/var/lib/libvirt/images/splitnn-vm-batch-base.qcow2"
-BACKING_NVRAM="/var/lib/libvirt/qemu/nvram/base-ubuntu22-vm-arm_VARS.template.fd"
+# BACKING_NVRAM="/var/lib/libvirt/qemu/nvram/base-ubuntu22-vm-arm_VARS.template.fd"
 
 # VM network configuration
 VM_PREFIX="splitnn-vm"

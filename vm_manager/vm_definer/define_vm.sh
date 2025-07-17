@@ -8,7 +8,6 @@ define_vm() {
   VM_ID=$((VM_I * 2))
   VM_NAME="${VM_PREFIX}-${VM_ID}"
   VM_DISK="/var/lib/libvirt/images/${VM_NAME}.qcow2"
-  VM_NVRAM="/var/lib/libvirt/qemu/nvram/${VM_NAME}_VARS.fd"
   MAC_ADDRESS_SUFFIX=$(printf %x ${VM_ID})
   MAC_ADDRESS="${RAW_MAC_PREFIX}${MAC_ADDRESS_SUFFIX}"
   VM_IP_SUFFIX=$((VM_ID + VM_IP_OFFSET))
@@ -17,19 +16,27 @@ define_vm() {
   echo "Creating disk for ${VM_NAME}..."
   qemu-img create -f qcow2 -b ${BACKING_DISK} -F qcow2 ${VM_DISK}
 
-  echo "Creating nvram firmware for ${VM_NAME}..."
-  cp ${BACKING_NVRAM} ${VM_NVRAM}
+  install_vm_cmd="virt-install --name ${VM_NAME} \
+  --ram ${RAM} --vcpus ${MAX_VCPUS} \
+  --disk path=${VM_DISK},format=qcow2 \
+  --network bridge=${BRIDGE_IF},model=virtio,mac=${MAC_ADDRESS} \
+  --network network=default,model=virtio,driver.name=vhost \
+  --os-variant ${OS_VARIANT} \
+  --import --noreboot --noautoconsole
+"
+
+  if [ -n "${BACKING_NVRAM}" ]; then
+    echo "Creating nvram firmware for ${VM_NAME}..."
+    VM_NVRAM="/var/lib/libvirt/qemu/nvram/${VM_NAME}_VARS.fd"
+    cp ${BACKING_NVRAM} ${VM_NVRAM}
+    chown libvirt-qemu:kvm ${VM_NVRAM}
+    install_vm_cmd="${install_vm_cmd} \
+--boot uefi,nvram=${VM_NVRAM}
+    "
+  fi
 
   echo "Installing ${VM_NAME}..."
-  virt-install --name ${VM_NAME} \
-               --ram ${RAM} --vcpus ${MAX_VCPUS} \
-               --disk path=${VM_DISK},format=qcow2 \
-               --network bridge=${BRIDGE_IF},model=virtio,mac=${MAC_ADDRESS} \
-               --network network=default,model=virtio,driver.name=vhost \
-               --os-variant ubuntu22.04 \
-               --boot uefi,nvram=${VM_NVRAM} \
-               --import --noreboot --noautoconsole
-  # virsh destroy ${VM_NAME}
+  ${install_vm_cmd}
 
   echo "Configuring network for ${VM_NAME}..."
   cat << EOF > /tmp/00-installer-config.yaml
@@ -66,7 +73,6 @@ fi
 brctl show ${BRIDGE_IF}
 ip addr show ${BRIDGE_IF}
 
-chown libvirt-qemu:kvm /var/lib/libvirt/qemu/nvram/base-ubuntu22-vm-arm_VARS.template.fd
 
 # Loop to create ${MAX_VM_NUM} VMs
 for i in $(seq 0 $((MAX_VM_NUM-1))); do
