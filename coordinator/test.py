@@ -161,7 +161,7 @@ def prepare_env_on_remote_servers(
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
-                "./sync_code.sh rigid", os.path.join(server["agentWorkDir"], ".."), None, False
+                "./sync_code.sh master", os.path.join(server["agentWorkDir"], ".."), None, False
             ) for server in server_config_list
         }
     )
