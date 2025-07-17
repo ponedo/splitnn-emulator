@@ -22,9 +22,11 @@ type NodeManager interface {
 type LinkManager interface {
 	Init(NodeManager) error
 	Delete() error
-	SetupAndEnterBbNs() (netns.NsHandle, error)
+	SetupBbNs() (netns.NsHandle, error)
+	EnterBbNs(int) (netns.NsHandle, error)
 	CleanAllBbNs() error
 	SetupLink(int, int, int, int) error
+	CleanAllLinks() error
 }
 
 func NetworkSetup(
@@ -33,7 +35,6 @@ func NetworkSetup(
 	backBoneNum int) error {
 	var err error
 	var curLinkNum int
-	var nodeTotalTime, linkTotalTime time.Duration
 	var hostNs, curBackBoneNs netns.NsHandle
 	var threadPool *ThreadPool
 
@@ -60,6 +61,8 @@ func NetworkSetup(
 	nodePerReport := nodeNum / reportTime
 	linkPerReport := linkNum / reportTime
 	linkPerBackBoneNs := (g.GetEdgeNum() + backBoneNum - 1) / backBoneNum
+
+	startNodeTime := time.Now()
 	for i, nodeId := range nodeOrder {
 		/* Progress reporter */
 		if nodePerReport > 0 && i%nodePerReport == 0 {
@@ -71,26 +74,40 @@ func NetworkSetup(
 		}
 
 		/* Setup next node and connectable links */
-		startNodeTime := time.Now()
 		err = nm.SetupNode(nodeId)
 		if err != nil {
 			return err
 		}
-		nodeTotalTime += time.Since(startNodeTime)
 
 		_, err = LinkLogFile.WriteString(
 			fmt.Sprintf("Node %d\n", nodeId))
 		if err != nil {
 			return err
 		}
+	}
+	nodeTotalTime := time.Since(startNodeTime)
 
+	/* Setup backbone namespaces */
+	startBbNsTime := time.Now()
+	for i := 0; i < backBoneNum; i += 1 {
+		curBackBoneNs, err = lm.SetupBbNs()
+		fmt.Printf("Creating bbns %d\n", i)
+		if err != nil {
+			return err
+		}
+	}
+	bbnsTotalTime := time.Since(startBbNsTime)
+
+	startLinkTime := time.Now()
+	for i := range nodeOrder {
 		/* Setup connectable links */
-		startLinkTime := time.Now()
+		curBbnsIndex := 0
 		for _, edge := range edgeOrder[i] {
 			curLinkStartTime := time.Now()
 			/* Create new backbone network namespace on demand */
 			if curLinkNum%linkPerBackBoneNs == 0 {
-				curBackBoneNs, err = lm.SetupAndEnterBbNs()
+				curBackBoneNs, err = lm.EnterBbNs(curBbnsIndex)
+				curBbnsIndex += 1
 				if err != nil {
 					return err
 				}
@@ -144,9 +161,11 @@ func NetworkSetup(
 				}
 			}
 		}
-		linkTotalTime += time.Since(startLinkTime)
 	}
+	linkTotalTime := time.Since(startLinkTime)
+
 	fmt.Printf("Node setup time: %.2fs\n", nodeTotalTime.Seconds())
+	fmt.Printf("Bbns setup time: %.2fs\n", bbnsTotalTime.Seconds())
 	fmt.Printf("Link setup time: %.2fs\n", linkTotalTime.Seconds())
 
 	err = netns.Set(hostNs)
@@ -170,12 +189,17 @@ func NetworkClean(
 	nm.Init()
 	lm.Init(nm)
 
-	edgeNum := g.GetEdgeNum()
-	extraTestTime := edgeNum / 50
+	// edgeNum := g.GetEdgeNum()
+	// extraTestTime := edgeNum / 50
+
+	startTime = time.Now()
+	lm.CleanAllLinks()
+	syncNtlk(0)
+	fmt.Printf("Clean link time: %.2fs\n", time.Since(startTime).Seconds())
 
 	startTime = time.Now()
 	lm.CleanAllBbNs()
-	syncNtlk(extraTestTime)
+	syncNtlk(0)
 	fmt.Printf("Clean bbns time: %.2fs\n", time.Since(startTime).Seconds())
 
 	startTime = time.Now()
@@ -234,7 +258,7 @@ func syncNtlk(extraTestTime int) error {
 
 	/* Use multiple "ip link add test-link" to probe whether rtnl_lock is released by netns deletion */
 	extraTurnNum := (extraTestTime + 99) / 100
-	testTime := 100
+	testTime := 20
 	probeLink = &netlink.Dummy{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: "probe-dummy",

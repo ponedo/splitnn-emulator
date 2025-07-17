@@ -49,7 +49,7 @@ func (lm *NtlBrLinkManager) Delete() error {
 	return nil
 }
 
-func (lm *NtlBrLinkManager) SetupAndEnterBbNs() (netns.NsHandle, error) {
+func (lm *NtlBrLinkManager) SetupBbNs() (netns.NsHandle, error) {
 	bbnsName := "bbns" + strconv.Itoa(lm.curBackBoneNum)
 	backboneNsHandle, err := netns.NewNamed(bbnsName)
 	if err != nil {
@@ -57,6 +57,16 @@ func (lm *NtlBrLinkManager) SetupAndEnterBbNs() (netns.NsHandle, error) {
 		return -1, err
 	}
 	lm.curBackBoneNum += 1
+	return backboneNsHandle, nil
+}
+
+func (lm *NtlBrLinkManager) EnterBbNs(bbnsIndex int) (netns.NsHandle, error) {
+	bbnsName := "bbns" + strconv.Itoa(bbnsIndex)
+	backboneNsHandle, err := netns.GetFromName(bbnsName)
+	if err != nil {
+		fmt.Printf("failed to netns.GetFromName %s: %s\n", bbnsName, err)
+		return -1, err
+	}
 
 	err = netns.Set(backboneNsHandle)
 	if err != nil {
@@ -122,6 +132,42 @@ func (lm *NtlBrLinkManager) CleanAllBbNs() error {
 	return nil
 }
 
+func (lm *NtlBrLinkManager) CleanAllLinks() error {
+	var origNs, bbnsHandle netns.NsHandle
+	var err error
+
+	origNs, err = netns.Get()
+	if err != nil {
+		fmt.Printf("failed to netns.Get of origNs: %s\n", err)
+		return err
+	}
+
+	/* Clean links in all bbns'es */
+	bbnsNames := getAllBbNs()
+	for _, bbnsName := range bbnsNames {
+		bbnsHandle, err = netns.GetFromName(bbnsName)
+		if err != nil {
+			return fmt.Errorf("error when getting bbns handle, %v", err)
+		}
+		err = netns.Set(bbnsHandle)
+		if err != nil {
+			fmt.Printf("failed to netns.Set to bbns: %s\n", err)
+			return err
+		}
+		delCommand := exec.Command(
+			"ip", "link", "del", "group", "1")
+		delCommand.Run()
+	}
+
+	err = netns.Set(origNs)
+	if err != nil {
+		fmt.Printf("failed to netns.Set to origNs: %s\n", err)
+		return err
+	}
+
+	return nil
+}
+
 /* Before calling SetupLink, current network namespace must be backbone namespace */
 func (lm *NtlBrLinkManager) SetupLink(nodeIdi int, nodeIdj int, serverID int, vxlanID int) error {
 	var err error
@@ -178,6 +224,7 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 			Name:  brName,
 			MTU:   1450,
 			Flags: net.FlagUp,
+			Group: 1,
 		},
 	}
 	vethOuti := &netlink.Veth{
@@ -185,6 +232,7 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 			Name:  vethNamei,
 			MTU:   1450,
 			Flags: net.FlagUp,
+			Group: 1,
 			// MasterIndex: br.Index,
 		},
 		PeerName:      insideVethNamei,
@@ -195,6 +243,7 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 			Name:  vethNamej,
 			MTU:   1450,
 			Flags: net.FlagUp,
+			Group: 1,
 			// MasterIndex: br.Index,
 		},
 		PeerName:      insideVethNamej,
@@ -202,12 +251,14 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	vethIni := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: insideVethNamei,
+			Name:  insideVethNamei,
+			Group: 1,
 		},
 	}
 	vethInj := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: insideVethNamej,
+			Name:  insideVethNamej,
+			Group: 1,
 		},
 	}
 
@@ -292,11 +343,13 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 			Name:  brName,
 			MTU:   1450,
 			Flags: net.FlagUp,
+			Group: 1,
 		},
 	}
 	vxlanOut := &netlink.Vxlan{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: vxlanName,
+			Name:  vxlanName,
+			Group: 1,
 		},
 		VxlanId:      vxlanID,
 		VtepDevIndex: LocalPhyIntfNl.Attrs().Index,
@@ -314,6 +367,7 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 			Name:  vethNamei,
 			MTU:   1450,
 			Flags: net.FlagUp,
+			Group: 1,
 			// MasterIndex: br.Index,
 		},
 		PeerName:      insideVethNamei,
@@ -321,7 +375,8 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 	vethIni := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: insideVethNamei,
+			Name:  insideVethNamei,
+			Group: 1,
 		},
 	}
 
@@ -374,6 +429,10 @@ func (lm *NtlBrLinkManager) SetupExternalLink(nodeIdi int, nodeIdj int, serverID
 	newVxlan, err = netlink.LinkByName(vxlanName)
 	if err != nil {
 		return fmt.Errorf("failed to LinkByName (%d, %d, %d, %s, %v): %s", nodeIdi, nodeIdj, vxlanID, brName, br, err)
+	}
+	err = netlink.LinkSetGroup(newVxlan, 1)
+	if err != nil {
+		return fmt.Errorf("failed to LinkSetGroup (%d, %d, %d, %s, %v): %s", nodeIdi, nodeIdj, vxlanID, brName, br, err)
 	}
 	err = netlink.LinkSetMaster(newVxlan, br)
 	if err != nil {
