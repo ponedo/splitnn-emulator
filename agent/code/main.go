@@ -109,16 +109,52 @@ func parseArgs() {
 		&args.ServerID, "i", 0,
 		"ID of current server in server-file")
 
+	flag.IntVar(
+		&args.S, "S", 0,
+		"Argument S for measure operation")
+	flag.IntVar(
+		&args.P, "P", 0,
+		"Argument P for measure operation")
+	flag.IntVar(
+		&args.Q, "Q", 0,
+		"Argument Q for measure operation")
 	flag.Parse()
 
 	/* Check whether args are valid */
-	if args.Operation == "setup" || args.Operation == "clean" || args.Operation == "exec" {
+	if args.Operation == "setup" || args.Operation == "clean" {
 		if args.Algorithm == "" {
 			fmt.Println("Please notify ALGORITHM")
 			os.Exit(1)
 		}
 		if args.Topofile == "" {
 			fmt.Println("Please notify TOPOFILE")
+			os.Exit(1)
+		}
+	} else if args.Operation == "node-measure" {
+		if args.P == 0 {
+			fmt.Println("Please notify argument P")
+			os.Exit(1)
+		}
+		if args.Q == 0 {
+			fmt.Println("Please notify argument Q")
+			os.Exit(1)
+		}
+		if args.S == 0 {
+			fmt.Println("Please notify argument S")
+			os.Exit(1)
+		}
+	} else if args.Operation == "link-measure" {
+		if args.P == 0 {
+			fmt.Println("Please notify argument P")
+			os.Exit(1)
+		}
+		if args.S == 0 {
+			fmt.Println("Please notify argument S")
+			os.Exit(1)
+		}
+	} else if args.Operation == "const-measure" {
+		if args.S == 0 {
+			fmt.Println("Please notify argument S")
 			os.Exit(1)
 		}
 	} else {
@@ -353,9 +389,15 @@ func main() {
 			linkManager, nodeManager,
 			graph, nodeOrder, edgeOrder,
 			args.BackboneNsNum)
-	case "exec":
-		err = network.NetworkExec(
-			linkManager, nodeManager)
+	case "node-measure":
+		err = network.NodeMeasure(
+			linkManager, nodeManager, args.S, args.P, args.Q)
+	case "link-measure":
+		err = network.LinkMeasure(
+			linkManager, nodeManager, args.S, args.P)
+	case "const-measure":
+		err = network.ConstMeasure(
+			linkManager, nodeManager, args.S)
 	}
 	if err != nil {
 		fmt.Printf("Error: %v.\n", err)

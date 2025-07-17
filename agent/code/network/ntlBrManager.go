@@ -22,9 +22,12 @@ type NtlBrLinkManager struct {
 	curExternalLinkNum      int
 	curExternalLinkNumMutex sync.Mutex
 	curBackBoneNs           netns.NsHandle
-	ExternalLinkOpTime      time.Duration
-	hostNetns               netns.NsHandle
-	nm                      NodeManager
+	repeatDevCounter        int /*
+		used for measuring mode where two nodes may be linked by multiple links
+	*/
+	ExternalLinkOpTime time.Duration
+	hostNetns          netns.NsHandle
+	nm                 NodeManager
 }
 
 func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
@@ -35,6 +38,7 @@ func (lm *NtlBrLinkManager) Init(nm NodeManager) error {
 	lm.curExternalLinkNum = 0
 	lm.nm = nm
 	lm.curBackBoneNs = -1
+	lm.repeatDevCounter = 0
 	lm.ExternalLinkOpTime = 0
 	lm.hostNetns, err = netns.Get()
 	if err != nil {
@@ -263,18 +267,34 @@ func (lm *NtlBrLinkManager) SetupInternalLink(nodeIdi int, nodeIdj int, serverID
 	}
 
 	/* Create a bridge and two veth pairs */
-	if err := netlink.LinkAdd(br); err != nil {
-		return fmt.Errorf("failed to create bridge: %s", err)
+	if err = netlink.LinkAdd(br); err != nil {
+		br.Name = br.Name + strconv.Itoa(lm.repeatDevCounter)
+		lm.repeatDevCounter++
+		if err = netlink.LinkAdd(br); err != nil {
+			return fmt.Errorf("failed to create bridge: %s", err)
+		}
 	}
 	vethOuti.Attrs().MasterIndex = br.Index
 	err = netlink.LinkAdd(vethOuti)
 	if err != nil {
-		return fmt.Errorf("failed to create veth: %s", err)
+		vethOuti.Name = vethOuti.Name + strconv.Itoa(lm.repeatDevCounter)
+		vethOuti.PeerName = vethOuti.PeerName + strconv.Itoa(lm.repeatDevCounter)
+		vethIni.Name = vethIni.Name + strconv.Itoa(lm.repeatDevCounter)
+		lm.repeatDevCounter++
+		if err = netlink.LinkAdd(vethOuti); err != nil {
+			return fmt.Errorf("failed to create veth: %s", err)
+		}
 	}
 	vethOutj.Attrs().MasterIndex = br.Index
 	err = netlink.LinkAdd(vethOutj)
 	if err != nil {
-		return fmt.Errorf("failed to create veth: %s", err)
+		vethOutj.Name = vethOutj.Name + strconv.Itoa(lm.repeatDevCounter)
+		vethOutj.PeerName = vethOutj.PeerName + strconv.Itoa(lm.repeatDevCounter)
+		vethInj.Name = vethInj.Name + strconv.Itoa(lm.repeatDevCounter)
+		lm.repeatDevCounter++
+		if err = netlink.LinkAdd(vethOutj); err != nil {
+			return fmt.Errorf("failed to create veth: %s", err)
+		}
 	}
 
 	/* Set the other sides of veths up */
