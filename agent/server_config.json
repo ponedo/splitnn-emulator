@@ -5,7 +5,7 @@
             "user": "cnic",
             "password": "1qazXSW@",
             "phyIntf": "enp1s0",
-            "agentWorkDir": "/home/cnic/agile-emulator-exp/topo-setup-test/agent",
+            "agentWorkDir": "/home/cnic/splitnn/agent",
             "dockerImageName": "ponedo/bird-ubuntu22",
             "kernFuncsToMonitor":  [
                 ["setup", "cctr", "chroot_fs_refs"],
