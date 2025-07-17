@@ -1,25 +1,3 @@
-# def read_graph_from_topo_file(filepath):
-#     """Reads the graph from the old format and returns a node list and adjacency list in the correct format."""
-#     nodes = []
-#     adjacency_list = {}
-
-#     with open(filepath, 'r') as f:
-#         # Read the first line to get node indices
-#         nodes = list(map(int, f.readline().split()))
-
-#         # Initialize adjacency list
-#         for node in nodes:
-#             adjacency_list[node] = []
-
-#         # Read subsequent lines for edges
-#         for line in f:
-#             u, v = map(int, line.split())
-#             adjacency_list[u].append(v)
-#             adjacency_list[v].append(u)  # Since the graph is undirected
-
-#     return nodes, adjacency_list
-
-
 def read_graph_from_topo_file(input_filepath):
     """Reads the graph from the old format and returns a node list and adjacency list in the correct format."""
     nodes = None

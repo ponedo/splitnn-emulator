@@ -6,12 +6,12 @@ source ${SCRIPT_DIR}/../vm_config.sh
 define_vm() {
   VM_I=$1
   VM_ID=$((VM_I * 2))
-  VM_NAME="${VM_PREFIX}-${HOST_ID}-${VM_ID}"
+  VM_NAME="${VM_PREFIX}-${VM_ID}"
   VM_DISK="/var/lib/libvirt/images/${VM_NAME}.qcow2"
   VM_NVRAM="/var/lib/libvirt/qemu/nvram/${VM_NAME}_VARS.fd"
   MAC_ADDRESS_SUFFIX=$(printf %x ${VM_ID})
   MAC_ADDRESS="${RAW_MAC_PREFIX}${MAC_ADDRESS_SUFFIX}"
-  VM_IP_SUFFIX=$((VM_IP + VM_IP_OFFSET))
+  VM_IP_SUFFIX=$((VM_ID + VM_IP_OFFSET))
   RAW_VIRTIO_IP="${RAW_VIRTIO_IP_PREFIX}${VM_IP_SUFFIX}"
   
   echo "Creating disk for ${VM_NAME}..."

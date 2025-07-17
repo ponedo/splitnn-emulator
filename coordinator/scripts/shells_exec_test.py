@@ -8,7 +8,7 @@ from copy import deepcopy
 from scripts.partition_topo import partition_graph
 from itertools import product
 from util.remote import *
-from util.topo_info import *
+from util.topo_util import *
 from util.factor import *
 from util.common import *
 from util.mnt_utils import *

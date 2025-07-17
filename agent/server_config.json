@@ -13,9 +13,7 @@
                 ["setup", "topo_setup_test", "fib6_clean_tree"],
                 ["clean", "", "br_vlan_flush"]
             ],
-            "server_best_bbns_factor": 2.353,
-            "phyicalMachineId": 0,
-            "phyicalMachineNodeCapacity": 15000
+            "physicalMachineId": 0
         }
     ]
 }

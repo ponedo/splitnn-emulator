@@ -4,6 +4,44 @@ import json
 COORDINATOR_WORKDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 AS_DATA_DIR = os.path.join(COORDINATOR_WORKDIR, "data")
 AS_TOPO_CONFIG_FILEPATH = os.path.join(AS_DATA_DIR, "as_topo_config.json")
+LOCAL_TOPO_DIR = os.path.join(COORDINATOR_WORKDIR, "topo")
+
+
+##################################
+# Scripts to generate topologies #
+##################################
+
+def get_full_topo_filename(topo_args):
+    return f"{'_'.join(topo_args)}.txt"
+
+def get_sub_topo_filename(topo_args, i):
+    full_topo_filename = get_full_topo_filename(topo_args)
+    splited_topo_filename = full_topo_filename.split('.')
+    if len(splited_topo_filename) == 1:
+        splited_sub_topo_filename = splited_topo_filename + [f"sub{i}"] # without .txt suffix
+    else:
+        splited_sub_topo_filename = splited_topo_filename[:-1] + [f"sub{i}"] + splited_topo_filename[-1:] # with .txt suffix
+    sub_topo_filename = '.'.join(splited_sub_topo_filename)
+    return sub_topo_filename
+
+def generate_topo(topo):
+    topo_type = topo[0]
+    full_topo_filename = get_full_topo_filename(topo)
+    full_topo_filepath = os.path.join(LOCAL_TOPO_DIR, full_topo_filename)
+    generate_topo_type_script_path = os.path.join(COORDINATOR_WORKDIR, "scripts", "topo", f"generate_{topo_type}_topo.py")
+    try:
+        generate_topology_cmd = \
+            ["python3", generate_topo_type_script_path] + topo[1:] + [full_topo_filepath]
+    except IndexError:
+        generate_topology_cmd = \
+            ["python3", generate_topo_type_script_path, full_topo_filepath]
+    result = subprocess.run(generate_topology_cmd, capture_output=True, text=True)
+    return full_topo_filepath
+
+
+###################################################################
+# Functions to get node and link numbers for different topologies #
+###################################################################
 
 def get_isolated_node_num(n):
     n = int(n)

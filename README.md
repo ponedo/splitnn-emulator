@@ -44,7 +44,6 @@ Before running the experiments, please setup a VM cluster including a master VM 
         ["clean", "", "br_vlan_flush"]
     ], // Used for recording kernel function time-cost. Just keep them as are.
     "server_best_bbns_factor": 2.353, // The measured k_opt argument, which influences the number of backbone namespaces when constructing a VN (see "Measuring platform-specific parameters" subsection below and check the paper for more details).
-    "phyicalMachineId": 0 // If you're using multiple physical machines, use this ID to indicate which physical machine this VM is on. !!! IMPORTANT !!!: Currently, phsicalMachineId of all VMs should be SAME. To run experiments across multiple machines, the Gurobi optimizer with a license should be installed (Future work).
     ```
 
 3. **(Important)** Setup an SSH key on master VM, and copy the public key to all slave VMs. Since SplitNN is a distributive solution spanning many VMs, this step enables automatic communication between VMs. Once configured SSH keys, please execute the following commnand on master VM for all slave VMs to check whether password-free communication is enabled:

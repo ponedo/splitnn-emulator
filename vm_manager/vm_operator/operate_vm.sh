@@ -16,6 +16,6 @@ fi
 
 for i in $(seq 0 $((vm_num-1))); do
 	VM_ID=$((i * 2))
-	VM_NAME="${VM_PREFIX}-${HOST_ID}-${VM_ID}"
+	VM_NAME="${VM_PREFIX}-${VM_ID}"
 	virsh ${op} ${VM_NAME}
 done

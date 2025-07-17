@@ -23,7 +23,7 @@ for mem_value in ${mem_values}; do
 	mem_before=$(get_cur_mem)
 	for i in $(seq 0 $((vm_num-1))); do
 		VM_ID=$((i * 2))
-		VM_NAME="${VM_PREFIX}-${HOST_ID}-${VM_ID}"
+		VM_NAME="${VM_PREFIX}-${VM_ID}"
 		virsh start ${VM_NAME} > /dev/null 2>&1
 		wait_time=$(get_wait_time $i)
 		sleep $wait_time

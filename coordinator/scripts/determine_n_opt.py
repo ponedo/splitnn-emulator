@@ -130,9 +130,9 @@ def topo_E_max(n, topo):
 
 def compute_T_mvs(n, topo):
     # Compute T_mvs based on E_max
-    avg_E_max_n = avg_E_max(n)
+    topo_E_max_n = topo_E_max(n, topo)
     topo_V = topos[topo][0]
-    T_mvs_n = avg_E_max_n * (topo_V / n * X + Z) + avg_E_max_n ** 2 * Y / 2
+    T_mvs_n = topo_E_max_n * (topo_V / n * X + Z) + topo_E_max_n ** 2 * Y / 2
     return T_mvs_n
 T_mvs = lambda n, topo: compute_T_mvs(n, topo)
 

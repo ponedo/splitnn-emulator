@@ -12,15 +12,15 @@ TBS_BIN_PATH = os.path.join(TBS_BIN_DIR, "tbs")
 
 
 def partition_graph_across_pm(
-    nodes, adjacency_list, server_config_list, input_topo_filepath):
+    nodes, adjacency_list, pm_config_list, input_topo_filepath):
     """Partitions the graph across multiple physical machines with TBS according to config."""
 
     # Scan IDs of physical machines
     distinct_pm_ids = set()
-    for i, server in enumerate(server_config_list):
-        pm_id = server["phyicalMachineId"]
+    for pm in pm_config_list:
+        pm_id = pm["id"]
         distinct_pm_ids.add(pm_id)
-    
+
     # If the number of PMs is 1, return the original topology
     if len(distinct_pm_ids) == 1:
         print("Only one PM is available. No partitioning needed.")
@@ -97,4 +97,26 @@ def partition_graph_across_pm(
     for pm_id in sorted(pmid2nodes.keys()):
         print(f"PM {pm_id} has {len(pmid2nodes[pm_id])} nodes.")
 
-    return node2pmid
+    # Construct the sub-graph of each PM for partitioning
+    pmid2nodes = {} # Construct node list
+    for pm_id in pm2servernum.keys():
+        pmid2nodes[pm_id] = []
+    for node, pm_id in node2pmid.items():
+        pmid2nodes[pm_id].append(node)
+    pmid2adjacencylist = {} # Construct adjacency list
+    for pm_id in pmid2nodes.keys():
+        pmid2adjacencylist[pm_id] = {}
+        for node in pmid2nodes[pm_id]:
+            pmid2adjacencylist[pm_id][node] = []
+    for node, pm_id in node2pmid.items():
+        # If the node is not dangling, add its neighbors in the same PM into the adjacency list
+        for neighbor in adjacency_list[node]:
+            if node2pmid[neighbor] == pm_id:
+                if neighbor not in pmid2adjacencylist[pm_id]:
+                    pmid2adjacencylist[pm_id][neighbor] = []
+                if node not in pmid2adjacencylist[pm_id]:
+                    pmid2adjacencylist[pm_id][node] = []
+                pmid2adjacencylist[pm_id][node].append(neighbor)
+                pmid2adjacencylist[pm_id][neighbor].append(node)
+
+    return node2pmid, pmid2nodes, pmid2adjacencylist

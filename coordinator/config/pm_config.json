@@ -1,0 +1,28 @@
+{
+    "physicalMachines": [
+        {
+            "ipAddr": "192.168.1.30",
+            "user": "root",
+            "password": "1qazXSW@",
+            "vmManagerWorkDir": "/home/cnic/splitnn_vm_manager",
+            "maxVMNum": 30,
+            "coreNum": 128,
+            "Memory": 968,
+            "Parameters": {
+                "theta_m_conf_table": {
+                    "8": 2.814,
+                    "25": 3.190,
+                    "50": 3.746,
+                    "100": 4.820,
+                    "200": 7.009,
+                    "300": 8.857,
+                    "400": 10.590,
+                    "500": 10.942
+                },
+                "X": 0.00329,
+                "Y": 0.03918,
+                "Z": 0.0127
+            }
+        }
+    ]
+}
