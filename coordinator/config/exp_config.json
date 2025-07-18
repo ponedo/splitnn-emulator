@@ -3,7 +3,7 @@
     "VMpassword": "1qazXSW@",
     "VMphyIntf": "enp1s0",
     "VMagentWorkDir": "/home/cnic/splitnn/agent",
-    "dockerImageName": "ponedo/bird-ubuntu22",
+    "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",
     "kernFuncsToMonitor":  [
         ["setup", "cctr", "chroot_fs_refs"],
         ["setup", "topo_setup_test", "wireless_nlevent_flush"],
