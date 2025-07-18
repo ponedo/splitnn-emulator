@@ -20,10 +20,10 @@ define_vm() {
   --ram ${RAM} --vcpus ${MAX_VCPUS} \
   --disk path=${VM_DISK},format=qcow2 \
   --network bridge=${BRIDGE_IF},model=virtio,mac=${MAC_ADDRESS} \
-  --network network=default,model=virtio,driver.name=vhost \
   --os-variant ${OS_VARIANT} \
   --import --noreboot --noautoconsole
 "
+  # --network network=default,model=virtio,driver.name=vhost \
 
   if [ -n "${BACKING_NVRAM}" ]; then
     echo "Creating nvram firmware for ${VM_NAME}..."

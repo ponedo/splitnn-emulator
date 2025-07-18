@@ -1,6 +1,10 @@
 import sys
 import os
 import time
+import math
+import csv
+import concurrent
+from .partition.partition_topo_vm import partition_graph_across_vm
 
 ################## E_max_n derivation functions ##################
 
@@ -57,37 +61,41 @@ def get_E_max_data_for_pm_topo(nodes, adjacency_list, pm_core_num):
 
 ################## Optimization functions ##################
 
-def compute_T_mvs(n, V, E_max, X, Y, Z):
+def T_mvs(n, V, E_max, X, Y, Z):
     E_max_n = E_max(n)
     T_mvs_n = E_max_n * (V / n * X + Z) + E_max_n ** 2 * Y / 2
     return T_mvs_n
 
-def compute_T_sn(n, V, E_max, X, Y, Z):
+def T_sn(n, V, E_max, X, Y, Z):
     E_max_n = E_max(n)
     T_sn_n_topo = E_max_n * (V / n * X + Z) + E_max_n * math.sqrt(2 * E_max_n * X * Y)
     return T_sn_n_topo
 
-def compute_M_mvs(n, m_conf):
-    theta_m_conf = para_table["theta_m_conf"][platform][m_conf]
+def M_mvs(n, m_conf, Theta):
+    theta_m_conf = Theta(m_conf)
     return n * theta_m_conf
 
-def compute_gain_mvs(n, m_conf, T_mvs, M_mvs, m_req):
-    numerator = (T_mvs(1, topo) - T_mvs(n, topo)) / T_mvs(1, topo)
-    dominator = M_mvs(n, m_conf) / m_req
+def Gain_mvs(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
+    T_mvs_1 = T_mvs(1, V, E_max, X, Y, Z)
+    numerator = (T_mvs_1 - T_mvs(n, V, E_max, X, Y, Z)) / T_mvs_1
+    dominator = M_mvs(n, m_conf, Theta) / m_req
     gain_mvs = numerator / dominator
     return gain_mvs
 
-def compute_gain_sn(n, m_conf, T_sn, M_mvs, m_req):
-    numerator = (T_sn(1, topo) - T_sn(n, topo)) / T_sn(1, topo)
-    dominator = M_mvs(n, m_conf) / m_req
+def Gain_sn(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
+    T_sn_1 = T_mvs(1, V, E_max, X, Y, Z)
+    numerator = (T_sn_1 - T_sn(n, V, E_max, X, Y, Z)) / T_sn_1
+    dominator = M_mvs(n, m_conf, Theta) / m_req
     gain_sn = numerator / dominator
     return gain_sn
 
 def get_optimal_vm_allocation_for_pm(
-    nodes, adjacency_list, pm_config, FIXED_VM_NUM, FIXED_BBNS_NUM):
+    nodes, adjacency_list,
+    pm_config, exp_config,
+    FIXED_VM_NUM, FIXED_BBNS_NUM):
 
     # Parse the PM config
-    core_num = pm_config["coreNum"]
+    pm_core_num = pm_config["coreNum"]
     m_platform = pm_config["Memory"]
     X = pm_config["Parameters"]["X"]
     Y = pm_config["Parameters"]["Y"]
@@ -96,10 +104,10 @@ def get_optimal_vm_allocation_for_pm(
         int(m_conf): theta_m for m_conf, theta_m in \
             pm_config["Parameters"]["theta_m_conf_table"].items()
     }
+    Theta = lambda m_conf: theta_m_conf_table[m_conf]
 
     # Constants
-    m_req = 500 # GB
-    over_subscription = 1
+    m_req = exp_config["MemoryReq(GB)"]
 
     # If VM number is fixed, use the fixed VM number
     if FIXED_VM_NUM > 0:
@@ -113,56 +121,60 @@ def get_optimal_vm_allocation_for_pm(
     E_max = lambda n: E_max_data[n]
 
     # Setup the T and M models and Gain computation functions
-    T_mvs = lambda n, V, E_max: compute_T_mvs(n, V, E_max, X, Y, Z)
-    T_sn = lambda n, V, E_max: compute_T_sn(n, V, E_max, X, Y, Z)
-    M_mvs = lambda n, m_conf: compute_M_mvs(n, m_conf)
-    Gain_mvs = lambda n, m_conf: compute_gain_mvs(n, m_conf, T_mvs, M_mvs, m_req)
-    Gain_sn = lambda n, m_conf: compute_gain_sn(n, m_conf, T_sn, M_mvs, m_req)
+    # T_mvs = lambda n, V, E_max: compute_T_mvs(n, V, E_max, X, Y, Z)
+    # T_sn = lambda n, V, E_max: compute_T_sn(n, V, E_max, X, Y, Z)
+    # M_mvs = lambda n, m_conf: compute_M_mvs(n, m_conf)
+    # Gain_mvs = lambda n, m_conf: compute_gain_mvs(n, m_conf, T_mvs, M_mvs, m_req)
+    # Gain_sn = lambda n, m_conf: compute_gain_sn(n, m_conf, T_sn, M_mvs, m_req)
     Gain = Gain_sn if FIXED_BBNS_NUM == 0 else Gain_mvs
 
     # Search for the optimal n and m_conf value that maximizes Gain
     n_opt = 1
     m_conf_opt = 8
-    m_extra_opt = n_opt * theta_m_conf[m_conf_opt]
-    max_gain = Gain(n_opt, m_conf_opt)
+    m_extra_opt = n_opt * Theta(m_conf_opt)
+    max_gain = Gain(n_opt, m_conf_opt, V, E_max, X, Y, Z, Theta, m_req)
+    search_n_range = range(2, pm_core_num)
+    search_m_conf_range = list(theta_m_conf_table.keys())
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
             # If violating constraints, skip this value pair
-            if n * m_conf < m_req or n * m_conf > m_platform * over_subscription:
+            if n * m_conf < m_req or n * m_conf > m_platform:
                 continue
-            gain = Gain(n, m_conf)
-            theta_m_conf = theta_m_conf_table[m_conf]
-            m_extra = n * theta_m_conf
+            gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)
+            m_extra = n * Theta(m_conf)
             if gain > max_gain:
                 max_gain = gain
                 n_opt = n
                 m_conf_opt = m_conf
                 m_extra_opt = m_extra
             search_results.append((n, m_conf, m_extra, gain))
-    vcpu_num_opt = min(4, int(core_num / n_opt))
+    vcpu_num_opt = min(4, int(pm_core_num / n_opt))
     optimal_result = (n_opt, m_conf_opt, vcpu_num_opt)
     return search_results, optimal_result
 
 def get_optimal_vm_allocation_for_all_pms(
-    pmid2nodes, pmid2adjacencylist, pm_config_list,
+    pmid2nodes, pmid2adjacencylist,
+    pm_config_list, exp_config,
     FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM):
 
     # Get maximum VM number on each VM
     cur_ts = time.time()
+    pmid2search_results = {}
     pmid2vmalloc = {}
     n_opt_legal = {}
 
     def compute_vm_allocation(pmid):
         search_results, optimal_result = get_optimal_vm_allocation_for_pm(
         pmid2nodes[pmid], pmid2adjacencylist[pmid],
-        pm_config_list[pmid], FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM
+        pm_config_list[pmid], exp_config,
+        FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM
         )
         n_opt, M_conf_opt, vcpu_num_opt = optimal_result
         legal = n_opt <= pm_config_list[pmid]["maxVMNum"]
         return pmid, search_results, optimal_result, legal
 
-    with ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
         results = list(executor.map(compute_vm_allocation, pmid2nodes.keys()))
     for pmid, search_results, vmalloc, legal in results:
         pmid2search_results[pmid] = search_results
@@ -191,8 +203,7 @@ def get_optimal_vm_allocation_for_all_pms(
 
 def output_vm_alloc_results(search_results, output_filepath):
     # Output the optimal n and m_conf for each topology to a csv file into separate files
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    search_results.sort(key=lambda x: x[3], reverse=True)
     with open(output_filepath, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["n", "m_conf", "m_extra", "Gain"])

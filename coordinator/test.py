@@ -5,9 +5,11 @@ import math
 import argparse
 import subprocess
 import shutil
+import sys
 from copy import deepcopy
 from itertools import product
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stdout, redirect_stderr
 
 from util.topo_util import generate_topo
 from util.mvs.partition.partition_topo_pm import *
@@ -18,13 +20,13 @@ from util.common import *
 from util.remote import *
 from util.topo_util import *
 from util.factor import *
-from util.mvs.partition.core import partition_topo
 
 ############################ Constants ###############################
 
 COORDINATOR_WORKDIR = os.path.dirname(os.path.abspath(__file__))
 os.chdir(COORDINATOR_WORKDIR) # Change cuurent working directory
 
+TEST_LOG_FILENAME = "test_log.txt"
 COORDINATOR_CONFIG_DIR = "config"
 PM_CONFIG_PATH = os.path.join(COORDINATOR_CONFIG_DIR, "pm_config.json")
 EXP_CONFIG_PATH = os.path.join(COORDINATOR_CONFIG_DIR, "exp_config.json")
@@ -44,15 +46,23 @@ REMOTE_RESULT_PATHS = [
     ("dir", "tmp/clean_cpu_mem_usage.txt"),
 ]
 
-######################## Test type options ###########################
+######################## Test options ###########################
+parser = argparse.ArgumentParser(description='A script to calculate optimal VM number n_opt for multi-VM splitting')
+parser.add_argument(
+    '-n', '--fixed-vm-num', type=int, default=0,
+    help='Fixed VM number per PM. If set to 0, use the optimal VM number; if set > 0, use the fixed VM number')
+parser.add_argument(
+    '-k', '--fixed-bbns-num', type=int, default=0,
+    help='The BBNS number used per VM. If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number')
+args = parser.parse_args()
 
-FIXED_VM_NUM_PER_PM = 0 # If set to 0, use the optimal VM number; if set > 0, use the fixed VM number
-FIXED_BBNS_NUM = 0 # If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number
+FIXED_VM_NUM_PER_PM = args.fixed_vm_num # If set to 0, use the optimal VM number; if set > 0, use the fixed VM number
+FIXED_BBNS_NUM = args.fixed_bbns_num # If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number
 
 assert FIXED_VM_NUM_PER_PM >= 0
 assert FIXED_BBNS_NUM >= 0
 
-######################### Command options ############################
+######################### Agent options ############################
 
 const_options = {
 }
@@ -156,8 +166,9 @@ def connect_remote_machines(machine_config_list):
 
 def prepare_env_on_remote_servers(
     remote_machines, server_config_filepath, server_config_list):
-    
+
     # Synchronize code
+    print("Synchronizing code...")
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
@@ -167,6 +178,7 @@ def prepare_env_on_remote_servers(
     )
 
     # Distribute vm_config.json onto each VM as server_config.json 
+    print("Distributing vm_config.json (server_config.json)...")
     server_config_src_dst_paths = {
         server["ipAddr"]: (
             server_config_filepath,
@@ -178,23 +190,24 @@ def prepare_env_on_remote_servers(
         remote_machines, server_config_src_dst_paths)
 
     # Recompile agent on all machines
+    print("Building agent on VMs...")
     execute_command_on_multiple_machines(
         remote_machines, {
             server["ipAddr"]: (
                 "export GOPROXY=https://goproxy.cn,direct && make", server["agentWorkDir"], None, False
-                # "make", server["agentWorkDir"], None, False
             ) for server in server_config_list
         }
     )
 
-    # Pull docker image needed on each machine
-    execute_command_on_multiple_machines(
-        remote_machines, {
-            server["ipAddr"]: (
-                f"./scripts/pull_docker_image.sh {server['dockerImageName']}", server["agentWorkDir"], None, True
-            ) for server in server_config_list
-        }
-    )
+    # # Prepare docker images on VMs
+    # print("Preparing docker images on VMs...")
+    # execute_command_on_multiple_machines(
+    #     remote_machines, {
+    #         server["ipAddr"]: (
+    #             f"./scripts/prepare_rootfs.sh {server['dockerImageName']}", server["agentWorkDir"], None, True
+    #         ) for server in server_config_list
+    #     }
+    # )
 
 ######################### VM manage helper functions ############################
 
@@ -209,7 +222,7 @@ def get_mem_usage_of_all_pms(remote_pms, pm_config_list):
             ) for server in pm_config_list
         }
     )
-    mem_results = {ipAddr2pmid[ipAddr], result for ipAddr, result in results.items()}
+    mem_results = {ipAddr2pmid[ipAddr]: result for ipAddr, result in results.items()}
     return mem_results
 
 ######################### Topology Helper functions ############################
@@ -268,9 +281,11 @@ def generate_agent_commands(
 ###################### Result Collection Helper functions #########################
 
 def get_one_test_log_name(var_opts):
+    old_var_opts_t = var_opts['t']
     var_opts['t'] = '_'.join(var_opts['t'])
     dir_name_elements = [f"{k}--{v}" for k, v in var_opts.items()]
     dir_name = '--'.join(dir_name_elements)
+    var_opts['t'] = old_var_opts_t
     return dir_name
 
 def reap_one_test_results(remote_machines, server_config_list, cur_test_log_dir):
@@ -318,7 +333,7 @@ def output_mem_usage_to_file(used_mem_results, unused_mem_results, mem_usage_fil
 
 def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_config):
     # Check log directory of current test
-    print(f"New test! Options: {var_opts}")
+    print(f"\n\n============== New test! Options: {var_opts} ==============\n")
     final_cur_test_log_dir = get_one_test_log_name(var_opts)
     full_cur_test_log_dir = os.path.join(local_result_repo_dir, final_cur_test_log_dir)
     if os.path.exists(full_cur_test_log_dir) and os.listdir(full_cur_test_log_dir):
@@ -327,6 +342,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     os.makedirs(full_cur_test_log_dir, exist_ok=True)
 
     # Generate current topology
+    topo = var_opts['t']
     full_topo_filepath = generate_topo(topo)
 
     # Partition topo to PMs
@@ -337,7 +353,8 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     # Get the optimal VM allocation for each PM in parallel
     pmid2search_results, pmid2vmalloc, n_opt_legal = \
         get_optimal_vm_allocation_for_all_pms(
-            pmid2nodes, pmid2adjacencylist, pm_config_list,
+            pmid2nodes, pmid2adjacencylist,
+            pm_config_list, exp_config,
             FIXED_VM_NUM_PER_PM, FIXED_BBNS_NUM
         )
     if not all(n_opt_legal.values()):
@@ -360,75 +377,75 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         vm_config_list, full_cur_test_log_dir)
 
     # Start VMs on all PMs
+    print(f"Starting VMs...")
     cur_ts = time.time()
     start_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
     wait_for_all_vms_to_start(vm_config_list, timeout=300)
     vm_start_elapsed_time = time.time() - cur_ts
+    time.sleep(5)
     print(f"VM starting consumes {vm_start_elapsed_time}s")
-    
+
     # Connect to all remote VMs
     remote_vms = connect_remote_machines(vm_config_list)
 
     # Config environments on remote VMs
     prepare_env_on_remote_servers(remote_vms, vm_config_filepath, vm_config_list)
 
-    # Partition the topology to VMs
-    tbs_metis_tdf, metis_tdf = partition_topo_across_vms_for_all_pms(
-        nodes, adjacency_list,
-        pmid2nodes, pmid2adjacencylist,
-        vm_config_list, full_topo_filepath)
-    tdf_filepath = os.path.join(full_cur_test_log_dir, "tdf.txt")
-    output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath)
+    # # Partition the topology to VMs
+    # tbs_metis_tdf, metis_tdf = partition_topo_across_vms_for_all_pms(
+    #     nodes, adjacency_list,
+    #     pmid2nodes, pmid2adjacencylist,
+    #     vm_config_list, full_topo_filepath)
+    # tdf_filepath = os.path.join(full_cur_test_log_dir, "tdf.txt")
+    # output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath)
 
-    # Distribute sub-topologies to remote VMs
-    distribute_sub_topo_to_vms(
-        topo, full_topo_filepath, remote_vms, vm_config_list)
+    # # Distribute sub-topologies to remote VMs
+    # distribute_sub_topo_to_vms(
+    #     topo, full_topo_filepath, remote_vms, vm_config_list)
 
-    # Calcuate best BBNS number k_opt for each sub-topology
-    serverid2bbnsnum = get_bbns_num_for_all_vms(
-        topo, pm_config_list, vm_config_list, FIXED_BBNS_NUM
-    )
+    # # Calcuate best BBNS number k_opt for each sub-topology
+    # serverid2bbnsnum = get_bbns_num_for_all_vms(
+    #     topo, pm_config_list, vm_config_list, FIXED_BBNS_NUM
+    # )
 
-    # Generate setup/clean commands
-    setup_commands, clean_commands = generate_agent_commands(
-        var_opts, topo, vm_config_list, serverid2bbnsnum)
+    # # Generate setup/clean commands
+    # setup_commands, clean_commands = generate_agent_commands(
+    #     var_opts, topo, vm_config_list, serverid2bbnsnum)
 
-    # Setup virtual network with agents on remote VMs
-    time.sleep(5)
-    print_commands(setup_commands)
-    execute_command_on_multiple_machines(remote_vms, setup_commands) # Setup virtual network
-    time.sleep(15) # Wait for a while
+    # # Setup virtual network with agents on remote VMs
+    # time.sleep(5)
+    # print_commands(setup_commands)
+    # execute_command_on_multiple_machines(remote_vms, setup_commands) # Setup virtual network
+    # time.sleep(15) # Wait for a while
 
-    # Record host PM usage
-    used_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
+    # # Record host PM usage
+    # used_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
-    # # Clean virtual network with agents on remote VMs
-    # print_commands(clean_commands)
-    # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
-    # time.sleep(20) # Wait for a while
+    # # # Clean virtual network with agents on remote VMs
+    # # print_commands(clean_commands)
+    # # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
+    # # time.sleep(20) # Wait for a while
 
-    # Reap results of current test
-    reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
+    # # Reap results of current test
+    # reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
 
     # Close connection to VMs
     for remote_machine in remote_machines:
         remote_machine.close_connection()
 
-    # Record VM destroy time
+    # Destroy VMs and record destroy time
+    print(f"Destroying VMs...")
     cur_ts = time.time()
     destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
     vm_destroy_elapsed_time = time.time() - cur_ts
     print(f"VM destroying consumes {vm_start_elapsed_time}s")
 
-    # Record PM memory usage
-    unused_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
-    mem_usage_filepath = os.path.join(full_cur_test_log_dir, "pm_mem_usage.txt")
-    output_mem_usage_to_file(used_mem_results, unused_mem_results, mem_usage_filepath)
+    # # Record PM memory usage
+    # unused_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
+    # mem_usage_filepath = os.path.join(full_cur_test_log_dir, "pm_mem_usage.txt")
+    # output_mem_usage_to_file(used_mem_results, unused_mem_results, mem_usage_filepath)
 
-################################# Main ##################################
-
-if __name__ == "__main__":
-
+def run_all_tests(local_result_repo_dir):
     # Read configurations
     with open(PM_CONFIG_PATH, 'r') as f:
         pm_config = json.load(f)
@@ -439,14 +456,10 @@ if __name__ == "__main__":
     # Connect to remote PMs
     remote_pms = connect_remote_machines(pm_config_list)
 
-    # Prepare local repository directory for storing test results
-    current_time = time.strftime("%Y%m%d-%H%M%S", time.localtime())
-    local_result_repo_dir = os.path.join(LOCAL_RESULT_DIR, f"{current_time}")
-    os.makedirs(local_result_repo_dir, exist_ok=True)
-
     # Iterate over all possible combiation of options
     var_opt_keys = var_options.keys()
 
+    # Each combination of options is a test
     for var_opt_comb in product(*var_options.values()):
         # Get a combination of options
         opts = dict(zip(var_opt_keys, var_opt_comb))
@@ -456,3 +469,20 @@ if __name__ == "__main__":
     # Close connection to PMs
     for remote_machine in remote_pms:
         remote_machine.close_connection()
+
+
+################################# Main ##################################
+
+if __name__ == "__main__":
+    # Prepare local repository directory for storing test results
+    current_time = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    local_result_repo_dir = os.path.join(
+        LOCAL_RESULT_DIR, f"n-{FIXED_VM_NUM_PER_PM}--k-{FIXED_BBNS_NUM}--{current_time}")
+    os.makedirs(local_result_repo_dir, exist_ok=True)
+
+    # Redirect stdout and stderr to the log file
+    with open(os.path.join(local_result_repo_dir, TEST_LOG_FILENAME), "w", buffering=1) as f:
+        with redirect_stdout(f), redirect_stderr(f):
+            print(f"FIXED_VM_NUM_PER_PM: {FIXED_VM_NUM_PER_PM}")
+            print(f"FIXED_BBNS_NUM: {FIXED_BBNS_NUM}")
+            run_all_tests(local_result_repo_dir)

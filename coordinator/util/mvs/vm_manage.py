@@ -1,15 +1,20 @@
+import time
+import json
+import subprocess
+from ..remote import *
+
 ##################### VM management functions #####################
 
 def start_vms_for_pm(vm_configs):
     vm_num = len(vm_configs)
-    return f"./vm_operator/operate.sh start {vm_num}"
+    return f"./vm_operator/operate_vm.sh start {vm_num}"
 
 def start_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms):
     start_vm_cmds = {}
     for pmid, vm_configs in pmid2vms.items():
         pm = pm_config_list[pmid]
         start_vm_cmds[pm["ipAddr"]] = (
-            start_vm_cmd_for_pm(vm_configs),
+            start_vms_for_pm(vm_configs),
             pm_config_list[pmid]["vmManagerWorkDir"],
             None, False
         )
@@ -19,14 +24,14 @@ def start_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms):
 
 def destroy_vms_for_pm(vm_configs):
     vm_num = len(vm_configs)
-    return f"./vm_operator/operate.sh destroy {vm_num}"
+    return f"./vm_operator/operate_vm.sh destroy {vm_num}"
 
 def destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms):
     destroy_vm_cmds = {}
     for pmid, vm_configs in pmid2vms.items():
         pm = pm_config_list[pmid]
         destroy_vm_cmds[pm["ipAddr"]] = (
-            destroy_vm_cmd_for_pm(vm_configs),
+            destroy_vms_for_pm(vm_configs),
             pm_config_list[pmid]["vmManagerWorkDir"],
             None, False
         )
@@ -36,9 +41,9 @@ def destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms):
 
 def alter_vm_cmd_for_pm(vm_alloc):
     vm_num, m_conf, vcpu_num = vm_alloc
+    m_conf = 1000000 * m_conf # convert GB to KB
     return f"./vm_operator/alter_vm.sh {vm_num} {m_conf} {vcpu_num}"
 
-VM_IP_TMP_DIR = "vm_ips"
 def alter_vm_for_all_pms(
     pmid2vmalloc, remote_pms,
     pm_config_list, exp_config,
@@ -58,10 +63,12 @@ def alter_vm_for_all_pms(
     )
 
     # Reap vm_ips.txt from remote PMs
+    vm_ips_dir = os.path.join(full_cur_test_log_dir, "vm_ips")
+    os.makedirs(vm_ips_dir, exist_ok=True)
     directories = {
         pm_config["ipAddr"]: (
             os.path.join(pm_config["vmManagerWorkDir"], "vm_ips.txt"),
-            os.path.join(full_cur_test_log_dir, VM_IP_TMP_DIR, f"pm_{pmid}_vm_ips.txt"),
+            os.path.join(vm_ips_dir, f"pm_{pmid}_vm_ips.txt"),
             False
         )
         for pmid, pm_config in enumerate(pm_config_list)
@@ -72,7 +79,7 @@ def alter_vm_for_all_pms(
     vm_config_list = []
     for pmid, pm_config in enumerate(pm_config_list):
         vm_ips_filepath = os.path.join(
-            full_cur_test_log_dir, VM_IP_TMP_DIR, f"pm_{pmid}_vm_ips.txt")
+            vm_ips_dir, f"pm_{pmid}_vm_ips.txt")
         with open(vm_ips_filepath, 'r') as f:
             vm_ips = f.read().strip().splitlines()
         for vm_ip in vm_ips:
@@ -87,6 +94,7 @@ def alter_vm_for_all_pms(
                 "physicalMachineId": pmid
             }
             vm_config_list.append(vm_config)
+    print(vm_config_list)
 
     return vm_config_list
 

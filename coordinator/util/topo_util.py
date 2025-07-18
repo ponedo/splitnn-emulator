@@ -1,5 +1,6 @@
 import os
 import json
+import subprocess
 
 COORDINATOR_WORKDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 AS_DATA_DIR = os.path.join(COORDINATOR_WORKDIR, "data")

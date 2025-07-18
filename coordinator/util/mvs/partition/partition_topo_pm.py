@@ -17,17 +17,19 @@ def partition_graph_across_pm(
 
     # Scan IDs of physical machines
     distinct_pm_ids = set()
-    for pm in pm_config_list:
-        pm_id = pm["id"]
+    for pm_id, _ in enumerate(pm_config_list):
         distinct_pm_ids.add(pm_id)
 
     # If the number of PMs is 1, return the original topology
     if len(distinct_pm_ids) == 1:
         print("Only one PM is available. No partitioning needed.")
+        pmid = list(distinct_pm_ids)[0]
         node2pmid = {}
         for node in nodes:
-            node2pmid[node] = list(distinct_pm_ids)[0]
-        return node2pmid
+            node2pmid[node] = pmid
+        pmid2nodes = {pmid: nodes}
+        pmid2adjacencylist = {pmid: adjacency_list}
+        return node2pmid, pmid2nodes, pmid2adjacencylist
 
     # Convert the topology file into metis graph format
     topo_file_dir = os.path.dirname(input_topo_filepath)

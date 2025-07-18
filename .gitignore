@@ -5,6 +5,7 @@ coordinator/topo/*.*
 coordinator/results*
 coordinator/METIS/
 coordinator/GKlib/
+coordinator/test_log
 coordinator/batch_test_log
 coordinator/process_results.py
 coordinator/util/mvs/partition/core.py
