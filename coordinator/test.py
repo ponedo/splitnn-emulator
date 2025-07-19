@@ -449,10 +449,12 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
 
     # Reap results of current test
     reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
+    time.sleep(5) # Wait for a while
 
     # Close connection to VMs
     for remote_vm in remote_vms:
         remote_vm.close_connection()
+    time.sleep(5) # Wait for a while
 
     # Destroy VMs and record destroy time
     print(f"Destroying VMs...")
