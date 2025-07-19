@@ -109,11 +109,11 @@ def get_optimal_vm_allocation_for_pm(
     # Constants
     m_req = exp_config["MemoryReq(GB)"]
 
-    # If VM number is fixed, use the fixed VM number
-    if FIXED_VM_NUM > 0:
-        # Set m_conf to the key which is nearest to m_req/FIXED_VM_NUM in the theta_m_conf_table
-        m_conf = min(theta_m_conf_table.keys(), key=lambda x: abs(x - m_req / FIXED_VM_NUM))
-        return FIXED_VM_NUM, m_conf
+    # # If VM number is fixed, use the fixed VM number
+    # if FIXED_VM_NUM > 0:
+    #     # Set m_conf to the key which is nearest to m_req/FIXED_VM_NUM in the theta_m_conf_table
+    #     m_conf = min(theta_m_conf_table.keys(), key=lambda x: abs(x - m_req / FIXED_VM_NUM))
+    #     return search_results, (FIXED_VM_NUM, m_conf, min(4, int(pm_core_num / FIXED_VM_NUM)))
 
     # Get the V and E_max(n) for the topology
     V = len(nodes)
@@ -133,12 +133,14 @@ def get_optimal_vm_allocation_for_pm(
     m_conf_opt = 8
     m_extra_opt = n_opt * Theta(m_conf_opt)
     max_gain = Gain(n_opt, m_conf_opt, V, E_max, X, Y, Z, Theta, m_req)
-    search_n_range = range(2, pm_core_num)
+    search_n_range = range(1, pm_core_num)
     search_m_conf_range = list(theta_m_conf_table.keys())
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
             # If violating constraints, skip this value pair
+            if FIXED_VM_NUM > 0 and n != FIXED_VM_NUM:
+                continue
             if n * m_conf < m_req or n * m_conf > m_platform:
                 continue
             gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)

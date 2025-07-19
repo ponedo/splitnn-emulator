@@ -4,6 +4,7 @@ import argparse
 import time
 import numpy as np
 from .fmt_util import *
+from .compute_tdf import *
 from scipy.sparse import lil_matrix
 
 
@@ -72,7 +73,7 @@ def partition_topo_across_vms_for_all_pms(
     nodes, adjacency_list,
     pmid2nodes, pmid2adjacencylist,
     vm_config_list, input_topo_filepath):
-    
+
     pm2servernum = {}
     serverid2pmid = {}
     for i, server in enumerate(vm_config_list):

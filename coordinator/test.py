@@ -16,6 +16,7 @@ from util.mvs.partition.partition_topo_pm import *
 from util.mvs.partition.partition_topo_vm import *
 from util.mvs.optimize import *
 from util.mvs.vm_manage import *
+from util.mns import *
 from util.common import *
 from util.remote import *
 from util.topo_util import *
@@ -34,16 +35,17 @@ SERVER_CONFIG_FILENAME = "server_config.json"
 AGENT_BIN_PATH = "bin/splitnn_agent"
 AGENT_TOPO_DIR = "tmp/topo"
 LOCAL_RESULT_DIR = "raw_results"
+SERVER_RESULTS_DIR = "server_results"
 LOCAL_TOPO_DIR = os.path.join(COORDINATOR_WORKDIR, "topo")
 REMOTE_RESULT_PATHS = [
     ("file", "tmp/setup_log.txt"),
-    ("file", "tmp/clean_log.txt"),
+    ("dir", "tmp/setup_cpu_mem_usage.txt"),
+    # ("file", "tmp/clean_log.txt"),
+    # ("dir", "tmp/clean_cpu_mem_usage.txt"),
+    ("dir", "tmp/kern_func"),
     ("file", "tmp/link_log.txt"),
     # ("dir", "tmp/cctr_log"),
-    ("dir", "tmp/kern_func"),
     # ("dir", "tmp/cctr_time.txt"),
-    ("dir", "tmp/setup_cpu_mem_usage.txt"),
-    ("dir", "tmp/clean_cpu_mem_usage.txt"),
 ]
 
 ######################## Test options ###########################
@@ -88,7 +90,7 @@ var_options = {
         # ["grid", "85", "85"],
         # ["grid", "90", "90"],
         # ["grid", "95", "95"],
-        # ["grid", "100", "100"],
+        ["grid", "100", "100"],
 
         # ["clos", "8"],
         # ["clos", "12"],
@@ -96,7 +98,7 @@ var_options = {
         # ["clos", "20"],
         # ["clos", "24"],
         # ["clos", "28"],
-        # ["clos", "32"],
+        ["clos", "32"],
 
         # ["chain", "1251"],
         # ["chain", "2501"],
@@ -118,7 +120,7 @@ var_options = {
 
         # ["as", "small"],
         # ["as", "medium"],
-        # ["as", "large"],
+        ["as", "large"],
     ],
 
     "a": [
@@ -218,11 +220,11 @@ def get_mem_usage_of_all_pms(remote_pms, pm_config_list):
     results = execute_command_on_multiple_machines(
         remote_pms, {
             server["ipAddr"]: (
-                "free | awk '/Mem/ {print $3}'", server["agentWorkDir"], None, False
+                "free | awk '/Mem/ {print $3}'", server["vmManagerWorkDir"], None, False
             ) for server in pm_config_list
         }
     )
-    mem_results = {ipAddr2pmid[ipAddr]: result for ipAddr, result in results.items()}
+    mem_results = {ipAddr2pmid[ipAddr]: int(result) for ipAddr, result in results.items()}
     return mem_results
 
 ######################### Topology Helper functions ############################
@@ -253,6 +255,8 @@ def get_one_vn_manage_cmd(bin_path, operation, options):
 def generate_agent_commands(
     var_opts, topo_args, vm_config_list, serverid2bbnsnum):
 
+    setup_commands, clean_commands = {}, {}
+
     # Merge -i -b -t options to setup/clean commands
     for server_id, server in enumerate(vm_config_list):
         server_i_opts = deepcopy(var_opts)
@@ -262,7 +266,7 @@ def generate_agent_commands(
 
         # Add -t option
         remote_sub_topo_filepath = os.path.join(
-            AGENT_TOPO_DIR, get_sub_topo_filename(topo_args, i))
+            AGENT_TOPO_DIR, get_sub_topo_filename(topo_args, server_id))
         server_i_opts['t'] = remote_sub_topo_filepath
 
         # Add -b option
@@ -291,7 +295,7 @@ def get_one_test_log_name(var_opts):
 def reap_one_test_results(remote_machines, server_config_list, cur_test_log_dir):
     server_log_dirs = []
     for i, server in enumerate(server_config_list):
-        server_i_log_dir = os.path.join(cur_test_log_dir, f"server{i}")
+        server_i_log_dir = os.path.join(cur_test_log_dir, SERVER_RESULTS_DIR, f"server{i}")
         os.makedirs(server_i_log_dir, exist_ok=True)
         server_log_dirs.append(server_i_log_dir)
 
@@ -317,23 +321,33 @@ def output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath):
         f.write(f"TBS-METIS TDF: {tbs_metis_tdf}\n")
         f.write(f"METIS TDF: {metis_tdf}\n")
 
-def output_mem_usage_to_file(used_mem_results, unused_mem_results, mem_usage_filepath):
-    assert set(used_mem_results.keys()) == set(unused_mem_results.keys())
-    mem_results = {}
-    for pmid in used_mem_results.keys():
-        mem_results[pmid] = used_mem_results[pmid] - unused_mem_results[pmid]
-    total_mem_usage = sum(mem_results.values())
+def output_mem_usage_to_file(
+    vm_mem_results, exp_mem_results, empty_mem_results, mem_usage_filepath):
+    assert set(vm_mem_results.keys()) == set(exp_mem_results.keys())
+    assert set(vm_mem_results.keys()) == set(empty_mem_results.keys())
+    vm_mem_usage_results = {}
+    for pmid in vm_mem_results.keys():
+        vm_mem_usage_results[pmid] = vm_mem_results[pmid] - empty_mem_results[pmid]
+    total_vm_mem_usage = sum(vm_mem_usage_results.values())
+    exp_mem_usage_results = {}
+    for pmid in vm_mem_results.keys():
+        exp_mem_usage_results[pmid] = exp_mem_results[pmid] - empty_mem_results[pmid]
+    total_exp_mem_usage = sum(exp_mem_usage_results.values())
 
     with open(mem_usage_filepath, 'w') as f:
-        for pmid in mem_results:
-            f.write(f"PM {pmid} Memory: {mem_results[pmid]}\n")
-        f.write(f"Total Memory (KB): {total_mem_usage}\n")
+        for pmid in vm_mem_usage_results:
+            f.write(f"PM {pmid} VM Memory: {vm_mem_usage_results[pmid]}\n")
+        f.write(f"Total VM Memory (KB): {total_vm_mem_usage}\n")
+        for pmid in exp_mem_usage_results:
+            f.write(f"PM {pmid} Exp Memory: {exp_mem_usage_results[pmid]}\n")
+        f.write(f"Total Exp Memory (KB): {total_exp_mem_usage}\n")
 
 ###################### One run of the experiment #########################
 
 def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_config):
     # Check log directory of current test
     print(f"\n\n============== New test! Options: {var_opts} ==============\n")
+    test_start_ts = time.time()
     final_cur_test_log_dir = get_one_test_log_name(var_opts)
     full_cur_test_log_dir = os.path.join(local_result_repo_dir, final_cur_test_log_dir)
     if os.path.exists(full_cur_test_log_dir) and os.listdir(full_cur_test_log_dir):
@@ -343,7 +357,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
 
     # Generate current topology
     topo = var_opts['t']
-    full_topo_filepath = generate_topo(topo)
+    full_topo_filepath = generate_topo(topo, LOCAL_TOPO_DIR)
 
     # Partition topo to PMs
     nodes, adjacency_list = read_graph_from_topo_file(full_topo_filepath)
@@ -382,8 +396,11 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     start_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
     wait_for_all_vms_to_start(vm_config_list, timeout=300)
     vm_start_elapsed_time = time.time() - cur_ts
-    time.sleep(5)
+    time.sleep(10)
     print(f"VM starting consumes {vm_start_elapsed_time}s")
+
+    # Record host PM usage
+    vm_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
     # Connect to all remote VMs
     remote_vms = connect_remote_machines(vm_config_list)
@@ -391,59 +408,68 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     # Config environments on remote VMs
     prepare_env_on_remote_servers(remote_vms, vm_config_filepath, vm_config_list)
 
-    # # Partition the topology to VMs
-    # tbs_metis_tdf, metis_tdf = partition_topo_across_vms_for_all_pms(
-    #     nodes, adjacency_list,
-    #     pmid2nodes, pmid2adjacencylist,
-    #     vm_config_list, full_topo_filepath)
-    # tdf_filepath = os.path.join(full_cur_test_log_dir, "tdf.txt")
-    # output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath)
+    # Partition the topology to VMs
+    tbs_metis_tdf, metis_tdf = partition_topo_across_vms_for_all_pms(
+        nodes, adjacency_list,
+        pmid2nodes, pmid2adjacencylist,
+        vm_config_list, full_topo_filepath)
+    tdf_filepath = os.path.join(full_cur_test_log_dir, "tdf.txt")
+    output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath)
 
-    # # Distribute sub-topologies to remote VMs
-    # distribute_sub_topo_to_vms(
-    #     topo, full_topo_filepath, remote_vms, vm_config_list)
+    # Distribute sub-topologies to remote VMs
+    distribute_sub_topo_to_vms(
+        topo, full_topo_filepath, remote_vms, vm_config_list)
 
-    # # Calcuate best BBNS number k_opt for each sub-topology
-    # serverid2bbnsnum = get_bbns_num_for_all_vms(
-    #     topo, pm_config_list, vm_config_list, FIXED_BBNS_NUM
-    # )
+    # Calcuate best BBNS number k_opt for each sub-topology
+    serverid2bbnsnum = get_bbns_num_for_all_vms(
+        topo, pm_config_list, vm_config_list, FIXED_BBNS_NUM
+    )
 
-    # # Generate setup/clean commands
-    # setup_commands, clean_commands = generate_agent_commands(
-    #     var_opts, topo, vm_config_list, serverid2bbnsnum)
+    # Generate setup/clean commands
+    setup_commands, clean_commands = generate_agent_commands(
+        var_opts, topo, vm_config_list, serverid2bbnsnum)
 
-    # # Setup virtual network with agents on remote VMs
-    # time.sleep(5)
-    # print_commands(setup_commands)
-    # execute_command_on_multiple_machines(remote_vms, setup_commands) # Setup virtual network
-    # time.sleep(15) # Wait for a while
+    # Setup virtual network with agents on remote VMs
+    time.sleep(5)
+    print(f"Setup virtual networks...")
+    print_commands(setup_commands)
+    cur_ts = time.time()
+    execute_command_on_multiple_machines(remote_vms, setup_commands) # Setup virtual network
+    setup_elapsed_time = time.time() - cur_ts
+    print(f"Setup done, time: {setup_elapsed_time}s")
+    time.sleep(15) # Wait for a while
 
-    # # Record host PM usage
-    # used_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
+    # Record host PM usage
+    exp_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
     # # # Clean virtual network with agents on remote VMs
     # # print_commands(clean_commands)
     # # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
     # # time.sleep(20) # Wait for a while
 
-    # # Reap results of current test
-    # reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
+    # Reap results of current test
+    reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
 
     # Close connection to VMs
-    for remote_machine in remote_machines:
-        remote_machine.close_connection()
+    for remote_vm in remote_vms:
+        remote_vm.close_connection()
 
     # Destroy VMs and record destroy time
     print(f"Destroying VMs...")
     cur_ts = time.time()
     destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
     vm_destroy_elapsed_time = time.time() - cur_ts
-    print(f"VM destroying consumes {vm_start_elapsed_time}s")
+    time.sleep(10)
+    print(f"VM destroying consumes {vm_destroy_elapsed_time}s")
 
-    # # Record PM memory usage
-    # unused_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
-    # mem_usage_filepath = os.path.join(full_cur_test_log_dir, "pm_mem_usage.txt")
-    # output_mem_usage_to_file(used_mem_results, unused_mem_results, mem_usage_filepath)
+    # Record PM memory usage
+    empty_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
+    mem_usage_filepath = os.path.join(full_cur_test_log_dir, "pm_mem_usage.txt")
+    output_mem_usage_to_file(vm_mem_results, exp_mem_results, empty_mem_results, mem_usage_filepath)
+
+    test_elapsed_time = time.time() - test_start_ts
+    print(f"The test consumes {test_elapsed_time}s")
+    
 
 def run_all_tests(local_result_repo_dir):
     # Read configurations

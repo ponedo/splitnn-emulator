@@ -25,10 +25,10 @@ def get_sub_topo_filename(topo_args, i):
     sub_topo_filename = '.'.join(splited_sub_topo_filename)
     return sub_topo_filename
 
-def generate_topo(topo):
+def generate_topo(topo, output_dir):
     topo_type = topo[0]
     full_topo_filename = get_full_topo_filename(topo)
-    full_topo_filepath = os.path.join(LOCAL_TOPO_DIR, full_topo_filename)
+    full_topo_filepath = os.path.join(output_dir, full_topo_filename)
     generate_topo_type_script_path = os.path.join(COORDINATOR_WORKDIR, "scripts", "topo", f"generate_{topo_type}_topo.py")
     try:
         generate_topology_cmd = \

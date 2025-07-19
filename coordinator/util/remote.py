@@ -62,8 +62,8 @@ class RemoteMachine:
             errors = stderr.read().decode()
 
             if errors and not errors.startswith("[sudo]"):
-                print(f"Error occured when executing {full_command}")
-                print(f"Errors:\n{errors}\n")
+                print(f"Stderr outputs when executing {full_command}")
+                print(f"Stderr:\n{errors}\n")
             else:
                 if output_file:
                     print(f"Command output has been redirected to {output_file}")

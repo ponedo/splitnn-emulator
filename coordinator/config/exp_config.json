@@ -7,8 +7,8 @@
     "MemoryReq(GB)": 500,
     "kernFuncsToMonitor":  [
         ["setup", "cctr", "chroot_fs_refs"],
-        ["setup", "topo_setup_test", "wireless_nlevent_flush"],
-        ["setup", "topo_setup_test", "fib6_clean_tree"],
+        ["setup", "splitnn_agent", "wireless_nlevent_flush"],
+        ["setup", "splitnn_agent", "fib6_clean_tree"],
         ["clean", "", "br_vlan_flush"]
     ]
 }

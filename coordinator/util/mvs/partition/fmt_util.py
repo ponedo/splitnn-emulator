@@ -58,11 +58,9 @@ def write_subtopo_to_file(filepath, nodes, edges, dangling_edges):
     with open(filepath, 'w') as f:
         # Write nodes
         f.write(' '.join(map(str, nodes)) + '\n')
-
         # Write internal edges
         for edge in edges:
             f.write(f"{edge[0]} {edge[1]}\n")
-
         # Write dangling edges
         for edge in dangling_edges:
             f.write(f"{edge[0]} {edge[1]}\n")
