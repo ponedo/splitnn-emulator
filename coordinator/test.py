@@ -54,14 +54,20 @@ parser.add_argument(
     '-n', '--fixed-vm-num', type=int, default=0,
     help='Fixed VM number per PM. If set to 0, use the optimal VM number; if set > 0, use the fixed VM number')
 parser.add_argument(
+    '-m', '--fixed-m-conf', type=int, default=0,
+    help='Fixed memory configuration per PM. If set to 0, use the optimal config; if set > 0, use the fixed number')
+parser.add_argument(
     '-k', '--fixed-bbns-num', type=int, default=0,
     help='The BBNS number used per VM. If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number')
 args = parser.parse_args()
 
 FIXED_VM_NUM_PER_PM = args.fixed_vm_num # If set to 0, use the optimal VM number; if set > 0, use the fixed VM number
+FIXED_M_CONF = args.fixed_m_conf # If set to 0, use the optimal memory configuration; if set > 0, use the fixed number
 FIXED_BBNS_NUM = args.fixed_bbns_num # If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number
 
 assert FIXED_VM_NUM_PER_PM >= 0
+assert FIXED_M_CONF >= 0
+assert not (FIXED_VM_NUM_PER_PM == 0 and FIXED_M_CONF > 0)
 assert FIXED_BBNS_NUM >= 0
 
 ######################### Agent options ############################
@@ -369,7 +375,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         get_optimal_vm_allocation_for_all_pms(
             pmid2nodes, pmid2adjacencylist,
             pm_config_list, exp_config,
-            FIXED_VM_NUM_PER_PM, FIXED_BBNS_NUM
+            FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM
         )
     if not all(n_opt_legal.values()):
         print(f"Warning: Optimal VM number exceeds maximum VM number on some PMs. Skipping current test.")
@@ -473,14 +479,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     print(f"The test consumes {test_elapsed_time}s")
     
 
-def run_all_tests(local_result_repo_dir):
-    # Read configurations
-    with open(PM_CONFIG_PATH, 'r') as f:
-        pm_config = json.load(f)
-        pm_config_list = pm_config["physicalMachines"]
-    with open(EXP_CONFIG_PATH, 'r') as f:
-        exp_config = json.load(f)
-
+def run_all_tests(local_result_repo_dir, pm_config_list, exp_config):
     # Connect to remote PMs
     remote_pms = connect_remote_machines(pm_config_list)
 
@@ -502,10 +501,18 @@ def run_all_tests(local_result_repo_dir):
 ################################# Main ##################################
 
 if __name__ == "__main__":
+    # Read configurations
+    with open(PM_CONFIG_PATH, 'r') as f:
+        pm_config = json.load(f)
+        pm_config_list = pm_config["physicalMachines"]
+    with open(EXP_CONFIG_PATH, 'r') as f:
+        exp_config = json.load(f)
+
     # Prepare local repository directory for storing test results
     current_time = time.strftime("%Y%m%d-%H%M%S", time.localtime())
     local_result_repo_dir = os.path.join(
-        LOCAL_RESULT_DIR, f"n-{FIXED_VM_NUM_PER_PM}--k-{FIXED_BBNS_NUM}--{current_time}")
+        LOCAL_RESULT_DIR,
+        f"pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--k-{FIXED_BBNS_NUM}--{current_time}")
     os.makedirs(local_result_repo_dir, exist_ok=True)
 
     # Redirect stdout and stderr to the log file
@@ -513,4 +520,4 @@ if __name__ == "__main__":
         with redirect_stdout(f), redirect_stderr(f):
             print(f"FIXED_VM_NUM_PER_PM: {FIXED_VM_NUM_PER_PM}")
             print(f"FIXED_BBNS_NUM: {FIXED_BBNS_NUM}")
-            run_all_tests(local_result_repo_dir)
+            run_all_tests(local_result_repo_dir, pm_config_list, exp_config)

@@ -18,6 +18,8 @@ cross_machine_bw = {
     (4, 5): 10000,
 }
 
+VLINK_BW = 10
+
 def get_cross_machine_bw(pm_id_0, pm_id_1):
     assert not pm_id_0 == pm_id_1
     if pm_id_0 > pm_id_1:
@@ -42,7 +44,7 @@ def compute_tdf(nodes, adjacency_list, node2server_id, serverid2pmid):
                 cross_machine_bw_key = (min(pm_id, neighbor_pm_id), max(pm_id, neighbor_pm_id))
                 if cross_machine_bw_key not in cross_machine_load:
                     cross_machine_load[cross_machine_bw_key] = 0
-                cross_machine_load[cross_machine_bw_key] += 100  # Assuming each link has a load of 100Mbps
+                cross_machine_load[cross_machine_bw_key] += VLINK_BW  # Assuming each link has a load of 10Mbps
 
     # Calculate cross-machine relative load
     cross_machine_relative_load = {}

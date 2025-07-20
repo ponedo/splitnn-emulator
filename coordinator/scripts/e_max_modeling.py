@@ -1,8 +1,6 @@
 # Measuring of E_max(n) for T_vm modeling in the paper
-from partition.core import partition_topo
-from partition.partition_topo_vm import partition_graph_across_vm
-from partition.fmt_util import read_graph_from_topo_file
 import os
+import sys
 import subprocess
 import multiprocessing
 
@@ -14,10 +12,15 @@ RESULTS_DIR = os.path.join(COORDINATOR_WORKDIR, "..", "results")
 os.chdir(COORDINATOR_WORKDIR) # Change current working directory
 LOCAL_TOPO_DIR = os.path.join(COORDINATOR_WORKDIR, "topo")
 
+sys.path.append(os.path.join(COORDINATOR_WORKDIR))
+
+from util.mvs.partition.partition_topo_vm import partition_graph_across_vm
+from util.mvs.partition.fmt_util import read_graph_from_topo_file
+
 ############################ script config ############################
 
-n_range = range(1, 2)
-run_num = 10
+n_range = range(1, 128)
+run_num = 2
 topologies = [
     ["grid", "100", "100"],
     ["clos", "32"],
@@ -55,7 +58,8 @@ def generate_topo_nodes_and_adjlist(topo):
 
 def partition_topo_pseudo(nodes, adjacency_list, n):
     # Perform the portition but not storing the result into file
-    node2serverid = partition_graph_across_vm(nodes, adjacency_list, n, 0, random=True)
+    # node2serverid = partition_graph_across_vm(nodes, adjacency_list, n, 0, random=True)
+    node2serverid = partition_graph_across_vm(nodes, adjacency_list, n, 0, random=False)
     return node2serverid
 
 def get_partition_stats(nodes, adjacency_list, node2serverid, n):

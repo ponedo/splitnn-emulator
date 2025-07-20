@@ -35,7 +35,8 @@ def inspect_log(log_file_path):
 def inspect_one_result_dir(result_dir, subdir_name):
     print(f"Inspecting {subdir_name}")
     setup_time = inspect_log(os.path.join(result_dir, "setup_log.txt"))
-    clean_time = inspect_log(os.path.join(result_dir, "clean_log.txt"))
+    # clean_time = inspect_log(os.path.join(result_dir, "clean_log.txt"))
+    clean_time = 0
     print(f"Setup time: {setup_time}s, clean time: {clean_time}s\n")
     return setup_time, clean_time
 

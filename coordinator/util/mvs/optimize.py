@@ -92,7 +92,7 @@ def Gain_sn(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
 def get_optimal_vm_allocation_for_pm(
     nodes, adjacency_list,
     pm_config, exp_config,
-    FIXED_VM_NUM, FIXED_BBNS_NUM):
+    FIXED_VM_NUM, FIXED_M_CONF, FIXED_BBNS_NUM):
 
     # Parse the PM config
     pm_core_num = pm_config["coreNum"]
@@ -141,6 +141,8 @@ def get_optimal_vm_allocation_for_pm(
             # If violating constraints, skip this value pair
             if FIXED_VM_NUM > 0 and n != FIXED_VM_NUM:
                 continue
+            if FIXED_M_CONF > 0 and n != FIXED_M_CONF:
+                continue
             if n * m_conf < m_req or n * m_conf > m_platform:
                 continue
             gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)
@@ -158,7 +160,7 @@ def get_optimal_vm_allocation_for_pm(
 def get_optimal_vm_allocation_for_all_pms(
     pmid2nodes, pmid2adjacencylist,
     pm_config_list, exp_config,
-    FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM):
+    FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM):
 
     # Get maximum VM number on each VM
     cur_ts = time.time()
@@ -168,9 +170,9 @@ def get_optimal_vm_allocation_for_all_pms(
 
     def compute_vm_allocation(pmid):
         search_results, optimal_result = get_optimal_vm_allocation_for_pm(
-        pmid2nodes[pmid], pmid2adjacencylist[pmid],
-        pm_config_list[pmid], exp_config,
-        FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM
+            pmid2nodes[pmid], pmid2adjacencylist[pmid],
+            pm_config_list[pmid], exp_config,
+            FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM
         )
         n_opt, M_conf_opt, vcpu_num_opt = optimal_result
         legal = n_opt <= pm_config_list[pmid]["maxVMNum"]
@@ -187,7 +189,7 @@ def get_optimal_vm_allocation_for_all_pms(
     #     pmid = pm_config["id"]
     #     search_results, optimal_result = get_optimal_vm_allocation(
     #         pmid2nodes[pmid], pmid2adjacencylist[pmid],
-    #         pm_config_list[pmid], FIXED_VM_NUM_PER_PM, USE_BEST_BBNS_NUM
+    #         pm_config_list[pmid], FIXED_VM_NUM_PER_PM, FIXED_BBNS_NUM
     #     )
     #     n_opt, M_conf_opt = optimal_result[0], optimal_result[1]
     #     pmid2vmalloc[pmid] = (n_opt, M_conf_opt)
