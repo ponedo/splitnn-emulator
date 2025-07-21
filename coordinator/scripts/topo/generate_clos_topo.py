@@ -1,4 +1,3 @@
-import yaml
 import argparse
 
 def generate_clos_topology_yaml(k, filepath='clos_topology.yaml'):

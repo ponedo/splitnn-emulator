@@ -90,7 +90,7 @@ def Gain_sn(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
     return gain_sn
 
 def get_optimal_vm_allocation_for_pm(
-    nodes, adjacency_list,
+    pmid, nodes, adjacency_list,
     pm_config, exp_config,
     FIXED_VM_NUM, FIXED_M_CONF, FIXED_BBNS_NUM):
 
@@ -118,6 +118,7 @@ def get_optimal_vm_allocation_for_pm(
     # Get the V and E_max(n) for the topology
     V = len(nodes)
     E_max_data = get_E_max_data_for_pm_topo(nodes, adjacency_list, pm_core_num)
+    print(f"E_max data for pm #{pmid}: {E_max_data}")
     E_max = lambda n: E_max_data[n]
 
     # Setup the T and M models and Gain computation functions
@@ -170,7 +171,7 @@ def get_optimal_vm_allocation_for_all_pms(
 
     def compute_vm_allocation(pmid):
         search_results, optimal_result = get_optimal_vm_allocation_for_pm(
-            pmid2nodes[pmid], pmid2adjacencylist[pmid],
+            pmid, pmid2nodes[pmid], pmid2adjacencylist[pmid],
             pm_config_list[pmid], exp_config,
             FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM
         )

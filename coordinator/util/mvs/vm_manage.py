@@ -94,7 +94,9 @@ def alter_vm_for_all_pms(
                 "physicalMachineId": pmid
             }
             vm_config_list.append(vm_config)
-    print(vm_config_list)
+    print("VM configuration:")
+    for vm_config in vm_config_list:
+        print(vm_config)
 
     return vm_config_list
 
