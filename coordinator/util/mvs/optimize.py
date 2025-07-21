@@ -141,7 +141,7 @@ def get_optimal_vm_allocation_for_pm(
             # If violating constraints, skip this value pair
             if FIXED_VM_NUM > 0 and n != FIXED_VM_NUM:
                 continue
-            if FIXED_M_CONF > 0 and n != FIXED_M_CONF:
+            if FIXED_M_CONF > 0 and m_conf != FIXED_M_CONF:
                 continue
             if n * m_conf < m_req or n * m_conf > m_platform:
                 continue

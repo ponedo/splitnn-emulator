@@ -519,5 +519,6 @@ if __name__ == "__main__":
     with open(os.path.join(local_result_repo_dir, TEST_LOG_FILENAME), "w", buffering=1) as f:
         with redirect_stdout(f), redirect_stderr(f):
             print(f"FIXED_VM_NUM_PER_PM: {FIXED_VM_NUM_PER_PM}")
+            print(f"FIXED_M_CONF: {FIXED_M_CONF}")
             print(f"FIXED_BBNS_NUM: {FIXED_BBNS_NUM}")
             run_all_tests(local_result_repo_dir, pm_config_list, exp_config)
