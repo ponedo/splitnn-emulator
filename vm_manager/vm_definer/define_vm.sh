@@ -8,7 +8,8 @@ define_vm() {
   VM_ID=$((VM_I * 2))
   VM_NAME="${VM_PREFIX}-${VM_ID}"
   VM_DISK="/var/lib/libvirt/images/${VM_NAME}.qcow2"
-  MAC_ADDRESS_SUFFIX=$(printf %x ${VM_ID})
+  MAC_ADDRESS_ID=$((VM_ID + VM_IP_OFFSET))
+  MAC_ADDRESS_SUFFIX=$(printf %x ${MAC_ADDRESS_ID})
   MAC_ADDRESS="${RAW_MAC_PREFIX}${MAC_ADDRESS_SUFFIX}"
   VM_IP_SUFFIX=$((VM_ID + VM_IP_OFFSET))
   RAW_VIRTIO_IP="${RAW_VIRTIO_IP_PREFIX}${VM_IP_SUFFIX}"
