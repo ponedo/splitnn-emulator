@@ -512,7 +512,7 @@ if __name__ == "__main__":
     current_time = time.strftime("%Y%m%d-%H%M%S", time.localtime())
     local_result_repo_dir = os.path.join(
         LOCAL_RESULT_DIR,
-        f"pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--k-{FIXED_BBNS_NUM}--{current_time}")
+        f"pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--m-{FIXED_M_CONF}--k-{FIXED_BBNS_NUM}--{current_time}")
     os.makedirs(local_result_repo_dir, exist_ok=True)
 
     # Redirect stdout and stderr to the log file
