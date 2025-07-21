@@ -97,6 +97,7 @@ var_options = {
         # ["grid", "90", "90"],
         # ["grid", "95", "95"],
         ["grid", "100", "100"],
+        ["grid", "200", "200"],
 
         # ["clos", "8"],
         # ["clos", "12"],
@@ -127,6 +128,8 @@ var_options = {
         # ["as", "small"],
         # ["as", "medium"],
         ["as", "large"],
+        ["as", "eu"],
+        ["as", "us"],
     ],
 
     "a": [
@@ -388,6 +391,8 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         pmid2search_results, topo_name, full_cur_test_log_dir)
 
     # Alter VM memory and get configration of VMs across all PMs
+    print(f"Partitioning with TBS...")
+    cur_ts = time.time()
     vm_config_list = alter_vm_for_all_pms(
         pmid2vmalloc, remote_pms,
         pm_config_list, exp_config,
@@ -395,6 +400,8 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     pmid2vms = get_pmid2vms(pm_config_list, vm_config_list)
     vm_config_filepath = write_vm_config_list_to_file(
         vm_config_list, full_cur_test_log_dir)
+    tbs_elapsed_time = time.time() - cur_ts
+    print(f"TBS elapsed for {tbs_elapsed_time}s")
 
     # Start VMs on all PMs
     print(f"Starting VMs...")
@@ -448,10 +455,10 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     # Record host PM usage
     exp_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
-    # # # Clean virtual network with agents on remote VMs
-    # # print_commands(clean_commands)
-    # # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
-    # # time.sleep(20) # Wait for a while
+    # # Clean virtual network with agents on remote VMs
+    # print_commands(clean_commands)
+    # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
+    # time.sleep(20) # Wait for a while
 
     # Reap results of current test
     reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
