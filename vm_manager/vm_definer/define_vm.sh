@@ -34,10 +34,10 @@ define_vm() {
     install_vm_cmd="${install_vm_cmd} \
 --boot uefi,nvram=${VM_NVRAM}
     "
-  else
-    install_vm_cmd="${install_vm_cmd} \
---boot uefi
-    "
+#   else
+#     install_vm_cmd="${install_vm_cmd} \
+# --boot uefi
+#     "
   fi
 
   echo "Installing ${VM_NAME}..."
