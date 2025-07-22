@@ -133,7 +133,8 @@ def get_optimal_vm_allocation_for_pm(
     n_opt = 1
     m_conf_opt = 8
     m_extra_opt = n_opt * Theta(m_conf_opt)
-    max_gain = Gain(n_opt, m_conf_opt, V, E_max, X, Y, Z, Theta, m_req)
+    # max_gain = Gain(n_opt, m_conf_opt, V, E_max, X, Y, Z, Theta, m_req)
+    max_gain = -1
     search_n_range = range(1, pm_core_num)
     search_m_conf_range = list(theta_m_conf_table.keys())
     search_results = []
