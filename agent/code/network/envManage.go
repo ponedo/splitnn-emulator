@@ -455,12 +455,15 @@ func setRlimits() {
 
 	setRlimit(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK") // ulimit -l
 	setRlimit(unix.RLIMIT_DATA, "RLIMIT_DATA")       // ulimit -m
-	setRlimit(unix.RLIMIT_NPROC, "RLIMIT_NPROC")     // Set RLIMIT_NPROC (max user processes)
+	setRlimit(unix.RLIMIT_NPROC, "RLIMIT_NPROC")     // ulimit -u
+	setRlimit(unix.RLIMIT_NOFILE, "RLIMIT_NOFILE")   // ulimit -n
 
 	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
 	fmt.Printf("After rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 	_ = unix.Getrlimit(unix.RLIMIT_NPROC, &rlim)
-	fmt.Printf("After rlimit setting: RLIMIT_NPROC = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+	fmt.Printf("After rlimit setting: RLIMIT_NPROC = Cur=%d Max=%d\n", rlim.Cur, rlim.Max))
+	_ = unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
+	fmt.Printf("After rlimit setting: RLIMIT_NOFILE = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 }
 
 func prepareRootfs(dockerImageName string) {
