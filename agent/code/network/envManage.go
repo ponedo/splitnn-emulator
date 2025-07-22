@@ -437,7 +437,7 @@ func setKernelPtySysctl() {
 	}
 }
 
-func setRlimit(resource int, name string) {
+func setRlimitInfinity(resource int, name string) {
 	limit := &unix.Rlimit{
 		Cur: unix.RLIM_INFINITY,
 		Max: unix.RLIM_INFINITY,
@@ -448,22 +448,39 @@ func setRlimit(resource int, name string) {
 	fmt.Printf("Set %s to unlimited\n", name)
 }
 
+func setRlimitToValue(resource int, name string, target uint64) {
+	var rlim unix.Rlimit
+	if err := unix.Getrlimit(resource, &rlim); err != nil {
+		fmt.Printf("Failed to get %s: %v\n", name, err)
+		return
+	}
+
+	rlim.Cur = target
+	rlim.Max = target
+
+	if err := unix.Setrlimit(resource, &rlim); err != nil {
+		fmt.Printf("Failed to set %s: %v\n", name, err)
+	} else {
+		fmt.Printf("Set %s to Cur=%d Max=%d\n", name, rlim.Cur, rlim.Max)
+	}
+}
+
 func setRlimits() {
 	var rlim unix.Rlimit
 	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
 	fmt.Printf("Before rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 
-	setRlimit(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK") // ulimit -l
-	setRlimit(unix.RLIMIT_DATA, "RLIMIT_DATA")       // ulimit -m
-	setRlimit(unix.RLIMIT_NPROC, "RLIMIT_NPROC")     // ulimit -u
-	// setRlimit(unix.RLIMIT_NOFILE, "RLIMIT_NOFILE")   // ulimit -n
+	setRlimitInfinity(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK")       // ulimit -l
+	setRlimitInfinity(unix.RLIMIT_DATA, "RLIMIT_DATA")             // ulimit -m
+	setRlimitInfinity(unix.RLIMIT_NPROC, "RLIMIT_NPROC")           // ulimit -u
+	setRlimitToValue(unix.RLIMIT_NOFILE, "RLIMIT_NOFILE", 1048576) // ulimit -n
 
 	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
 	fmt.Printf("After rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 	_ = unix.Getrlimit(unix.RLIMIT_NPROC, &rlim)
 	fmt.Printf("After rlimit setting: RLIMIT_NPROC = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
-	// _ = unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
-	// fmt.Printf("After rlimit setting: RLIMIT_NOFILE = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+	_ = unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
+	fmt.Printf("After rlimit setting: RLIMIT_NOFILE = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 }
 
 func prepareRootfs(dockerImageName string) {
