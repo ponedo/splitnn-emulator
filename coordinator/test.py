@@ -128,8 +128,8 @@ var_options = {
         # ["as", "small"],
         # ["as", "medium"],
         ["as", "large"],
-        # ["as", "eu"],
-        # ["as", "us"],
+        ["as", "eu"],
+        ["as", "us"],
     ],
 
     "a": [
@@ -416,7 +416,13 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     vm_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
     # Connect to all remote VMs
-    remote_vms = connect_remote_machines(vm_config_list)
+    remote_vms = [None for vm_config in vm_config_list]
+    while True:
+        print("Trying SSH connection...")
+        remote_vms = connect_remote_machines(vm_config_list)
+        if all(remote_vms):
+            break
+        wait_for_all_vms_to_start(vm_config_list, timeout=300)
 
     # Config environments on remote VMs
     prepare_env_on_remote_servers(remote_vms, vm_config_filepath, vm_config_list)
