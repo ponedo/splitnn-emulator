@@ -11,6 +11,7 @@ coordinator/process_results.py
 coordinator/util/mvs/partition/core.py
 agent/bin/*
 agent/tmp/
+agent/server_config.json.bak
 dataproc/tmp/
 dataproc/*-plot/
 run.log
