@@ -6,4 +6,4 @@ python -u test.py -n 3 -m 200 -k 1
 python -u test.py -n 3 -m 300 -k 1
 python -u test.py -n 2 -m 300 -k 1
 python -u test.py -n 2 -m 400 -k 1
-python -u test.py -n 1 -m 500 -k 1
+python -u test.py -n 1 -k 1

@@ -1,0 +1,19 @@
+{
+    "servers": [
+        {
+            "ipAddr": "10.10.30.148",
+            "user": "cnic",
+            "password": "1qazXSW@",
+            "phyIntf": "enp1s0",
+            "agentWorkDir": "/home/cnic/splitnn/agent",
+            "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",
+            "kernFuncsToMonitor":  [
+                ["setup", "cctr", "chroot_fs_refs"],
+                ["setup", "topo_setup_test", "wireless_nlevent_flush"],
+                ["setup", "topo_setup_test", "fib6_clean_tree"],
+                ["clean", "", "br_vlan_flush"]
+            ],
+            "physicalMachineId": 0
+        }
+    ]
+}
