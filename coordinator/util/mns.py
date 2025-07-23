@@ -17,8 +17,8 @@ def get_bbns_num_for_all_vms(topo, pm_config_list, vm_config_list, FIXED_BBNS_NU
 
         if FIXED_BBNS_NUM == 0:
             k_opt = math.sqrt((link_num * Y) / (2 * X))
-            serverid2bbnsnum[server_id] = k_opt
+            serverid2bbnsnum[server_id] = math.ceil(k_opt)
         else:
-            serverid2bbnsnum[server_id] = min(link_num, FIXED_BBNS_NUM)
+            serverid2bbnsnum[server_id] = math.ceil(min(link_num, FIXED_BBNS_NUM))
 
     return serverid2bbnsnum
