@@ -469,16 +469,20 @@ func setRlimits() {
 	var rlim unix.Rlimit
 	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
 	fmt.Printf("Before rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+	_ = unix.Getrlimit(unix.RLIMIT_DATA, &rlim)
+	fmt.Printf("Before rlimit setting: RLIMIT_DATA = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+	_ = unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
+	fmt.Printf("Before rlimit setting: RLIMIT_NOFILE = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 
-	setRlimitInfinity(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK")       // ulimit -l
-	setRlimitInfinity(unix.RLIMIT_DATA, "RLIMIT_DATA")             // ulimit -m
-	setRlimitInfinity(unix.RLIMIT_NPROC, "RLIMIT_NPROC")           // ulimit -u
+	setRlimitInfinity(unix.RLIMIT_MEMLOCK, "RLIMIT_MEMLOCK") // ulimit -l
+	setRlimitInfinity(unix.RLIMIT_DATA, "RLIMIT_DATA")       // ulimit -m
+	// setRlimitInfinity(unix.RLIMIT_NPROC, "RLIMIT_NPROC")           // ulimit -u
 	setRlimitToValue(unix.RLIMIT_NOFILE, "RLIMIT_NOFILE", 1048576) // ulimit -n
 
 	_ = unix.Getrlimit(unix.RLIMIT_MEMLOCK, &rlim)
 	fmt.Printf("After rlimit setting: RLIMIT_MEMLOCK = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
-	_ = unix.Getrlimit(unix.RLIMIT_NPROC, &rlim)
-	fmt.Printf("After rlimit setting: RLIMIT_NPROC = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
+	_ = unix.Getrlimit(unix.RLIMIT_DATA, &rlim)
+	fmt.Printf("After rlimit setting: RLIMIT_DATA = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 	_ = unix.Getrlimit(unix.RLIMIT_NOFILE, &rlim)
 	fmt.Printf("After rlimit setting: RLIMIT_NOFILE = Cur=%d Max=%d\n", rlim.Cur, rlim.Max)
 }
