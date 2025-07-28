@@ -155,7 +155,7 @@ def get_optimal_vm_allocation_for_pm(
                 m_conf_opt = m_conf
                 m_extra_opt = m_extra
             search_results.append((n, m_conf, m_extra, gain))
-    vcpu_num_opt = min(16, int(pm_core_num / n_opt))
+    vcpu_num_opt = min(8, int(pm_core_num / n_opt))
     optimal_result = (n_opt, m_conf_opt, vcpu_num_opt)
     return search_results, optimal_result
 

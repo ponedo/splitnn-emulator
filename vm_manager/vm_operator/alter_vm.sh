@@ -13,6 +13,19 @@ if [ -z "$vm_num" ] || [ -z "$new_mem_value" ]; then
 	exit
 fi
 
+set_vcpu_num()
+{
+	VM_NAME=$1
+	new_vcpu_num=$2
+
+	tmp_filepath=/tmp/splitnn-vm-tmp.xml
+
+	virsh dumpxml ${VM_NAME} > ${tmp_filepath}
+	sed -i -E "s|<vcpu placement=['\"]static['\"]>[0-9]+</vcpu>|<vcpu placement='static'>${new_vcpu_num}</vcpu>|" ${tmp_filepath}
+	virsh undefine ${VM_NAME}
+	virsh define ${tmp_filepath}
+}
+
 rm vm_ips.txt
 
 for i in $(seq 0 $((vm_num-1))); do
@@ -25,5 +38,6 @@ for i in $(seq 0 $((vm_num-1))); do
 
 	virsh setmaxmem ${VM_NAME} ${new_mem_value} --config > /dev/null
 	virsh setmem ${VM_NAME} ${new_mem_value} --config > /dev/null
-	virsh setvcpus ${VM_NAME} ${new_vcpu_num} --config > /dev/null
+	# virsh setvcpus ${VM_NAME} ${new_vcpu_num} --config > /dev/null
+	set_vcpu_num ${VM_NAME} ${new_vcpu_num}
 done
