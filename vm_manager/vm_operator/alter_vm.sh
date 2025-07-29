@@ -22,7 +22,11 @@ set_vcpu_num()
 
 	virsh dumpxml ${VM_NAME} > ${tmp_filepath}
 	sed -i -E "s|<vcpu placement=['\"]static['\"]>[0-9]+</vcpu>|<vcpu placement='static'>${new_vcpu_num}</vcpu>|" ${tmp_filepath}
-	virsh undefine ${VM_NAME}
+	if [ -n "${BACKING_NVRAM}" ]; then
+		virsh undefine ${VM_NAME} --nvram
+	else
+		virsh undefine ${VM_NAME}
+	fi
 	virsh define ${tmp_filepath}
 }
 
