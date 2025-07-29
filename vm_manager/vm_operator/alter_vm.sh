@@ -24,6 +24,8 @@ set_vcpu_num()
 	sed -i -E "s|<vcpu placement=['\"]static['\"]>[0-9]+</vcpu>|<vcpu placement='static'>${new_vcpu_num}</vcpu>|" ${tmp_filepath}
 	if [ -n "${BACKING_NVRAM}" ]; then
 		virsh undefine ${VM_NAME} --nvram
+		VM_NVRAM="/var/lib/libvirt/qemu/nvram/${VM_NAME}_VARS.fd"
+		cp ${BACKING_NVRAM} ${VM_NVRAM}
 	else
 		virsh undefine ${VM_NAME}
 	fi
