@@ -140,15 +140,16 @@ def get_optimal_vm_allocation_for_pm(
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
+            # If violating constraints, exclude this value pair
+            if n * m_conf < m_req or n * m_conf > m_platform:
+                continue
             gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)
             m_extra = n * Theta(m_conf)
             search_results.append((n, m_conf, m_extra, gain))
-            # If violating constraints, skip this value pair
+            # If n or m are fixed, skip as demanded
             if FIXED_VM_NUM > 0 and n != FIXED_VM_NUM:
                 continue
             if FIXED_M_CONF > 0 and m_conf != FIXED_M_CONF:
-                continue
-            if n * m_conf < m_req or n * m_conf > m_platform:
                 continue
             if gain > max_gain:
                 max_gain = gain
