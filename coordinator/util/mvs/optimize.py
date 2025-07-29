@@ -83,7 +83,7 @@ def Gain_mvs(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
     return gain_mvs
 
 def Gain_sn(n, m_conf, V, E_max, X, Y, Z, Theta, m_req):
-    T_sn_1 = T_mvs(1, V, E_max, X, Y, Z)
+    T_sn_1 = T_sn(1, V, E_max, X, Y, Z)
     numerator = (T_sn_1 - T_sn(n, V, E_max, X, Y, Z)) / T_sn_1
     dominator = M_mvs(n, m_conf, Theta) / m_req
     gain_sn = numerator / dominator
@@ -135,11 +135,14 @@ def get_optimal_vm_allocation_for_pm(
     m_extra_opt = n_opt * Theta(m_conf_opt)
     # max_gain = Gain(n_opt, m_conf_opt, V, E_max, X, Y, Z, Theta, m_req)
     max_gain = -1
-    search_n_range = range(1, pm_core_num)
+    search_n_range = range(2, pm_core_num)
     search_m_conf_range = list(theta_m_conf_table.keys())
     search_results = []
     for n in search_n_range:
         for m_conf in search_m_conf_range:
+            gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)
+            m_extra = n * Theta(m_conf)
+            search_results.append((n, m_conf, m_extra, gain))
             # If violating constraints, skip this value pair
             if FIXED_VM_NUM > 0 and n != FIXED_VM_NUM:
                 continue
@@ -147,14 +150,11 @@ def get_optimal_vm_allocation_for_pm(
                 continue
             if n * m_conf < m_req or n * m_conf > m_platform:
                 continue
-            gain = Gain(n, m_conf, V, E_max, X, Y, Z, Theta, m_req)
-            m_extra = n * Theta(m_conf)
             if gain > max_gain:
                 max_gain = gain
                 n_opt = n
                 m_conf_opt = m_conf
                 m_extra_opt = m_extra
-            search_results.append((n, m_conf, m_extra, gain))
     vcpu_num_opt = min(8, int(pm_core_num / n_opt))
     optimal_result = (n_opt, m_conf_opt, vcpu_num_opt)
     return search_results, optimal_result
