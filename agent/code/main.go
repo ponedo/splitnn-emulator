@@ -38,10 +38,10 @@ func parseArgs() {
 	/* Parse arguments */
 	// flag.StringVar(
 	// 	&args.Operation, "operation", "",
-	// 	"Operation [setup|clean|exec|node-measure|link-measure]")
+	// 	"Operation [setup|clean|exec|node-measure|link-measure|bbns-measure]")
 	flag.StringVar(
 		&args.Operation, "o", "",
-		"Operation [setup|clean|exec|node-measure|link-measure]")
+		"Operation [setup|clean|exec|node-measure|link-measure|bbns-measure]")
 	// flag.IntVar(
 	// 	&args.BackboneNsNum, "bb-ns-num", 1,
 	// 	"# of backbone network namespaces")
@@ -144,6 +144,15 @@ func parseArgs() {
 			os.Exit(1)
 		}
 	} else if args.Operation == "link-measure" {
+		if args.P == 0 {
+			fmt.Println("Please notify argument P")
+			os.Exit(1)
+		}
+		if args.S == 0 {
+			fmt.Println("Please notify argument S")
+			os.Exit(1)
+		}
+	} else if args.Operation == "bbns-measure" {
 		if args.P == 0 {
 			fmt.Println("Please notify argument P")
 			os.Exit(1)
@@ -394,6 +403,9 @@ func main() {
 			linkManager, nodeManager, args.S, args.P, args.Q)
 	case "link-measure":
 		err = network.LinkMeasure(
+			linkManager, nodeManager, args.S, args.P)
+	case "bbns-measure":
+		err = network.BBNSMeasure(
 			linkManager, nodeManager, args.S, args.P)
 	case "const-measure":
 		err = network.ConstMeasure(

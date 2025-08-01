@@ -2,6 +2,9 @@ package network
 
 import (
 	"fmt"
+	"io/ioutil"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/vishvananda/netns"
@@ -369,6 +372,89 @@ func ConstMeasure(
 		}
 	}
 
+	syncNtlk(0)
+
+	lm.Delete()
+	nm.Delete()
+
+	return nil
+}
+
+/* ====================== BBNS Measure ======================= */
+
+// getUsedMemoryMB returns the used memory of the system in MB.
+func getUsedMemoryMB() (float64, error) {
+	data, err := ioutil.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0, err
+	}
+	var memTotal, memAvailable float64
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		if fields[0] == "MemTotal:" {
+			memTotal, _ = strconv.ParseFloat(fields[1], 64)
+		}
+		if fields[0] == "MemAvailable:" {
+			memAvailable, _ = strconv.ParseFloat(fields[1], 64)
+		}
+	}
+	usedKB := memTotal - memAvailable
+	usedMB := usedKB / 1024.0
+	return usedMB, nil
+}
+
+// Measure the construction speed and memory overhaed of BBNS.
+func BBNSMeasure(
+	lm LinkManager, nm NodeManager,
+	sampleNum int, maxSample int) error {
+	var err error
+	var startTime time.Time
+
+	nm.Init()
+	lm.Init(nm)
+
+	fmt.Printf("Running node-measure\n")
+	fmt.Printf("sampleNum (S): %d\n", sampleNum)
+	fmt.Printf("maxSample (P): %d\n", maxSample)
+
+	bbnsNumPerSample := maxSample / sampleNum
+	curBBNSNum := 0
+	startTime = time.Now()
+	// Get initial used memory in MB
+	initMem, err := getUsedMemoryMB()
+	if err != nil {
+		return err
+	}
+
+	for i := 0; i < sampleNum; i += 1 {
+		/* Construct BBNSes for this sample */
+		for j := 0; j < bbnsNumPerSample; j += 1 {
+			_, err = lm.SetupBbNs()
+			if err != nil {
+				return err
+			}
+		}
+		sampleUsedTime := time.Since(startTime).Seconds()
+		curBBNSNum += bbnsNumPerSample
+
+		// Get current used memory and calculate increased memory
+		curMem, err := getUsedMemoryMB()
+		if err != nil {
+			return err
+		}
+		memIncrease := curMem - initMem
+
+		fmt.Printf("[Sample %v BBNSes] Time: %.2fs, Memory Increased: %.2fMB\n",
+			curBBNSNum, sampleUsedTime, memIncrease)
+	}
+
+	/* Clean nodes and the bbns */
+	fmt.Printf("End: Cleaning bbns...\n")
+	lm.CleanAllBbNs()
 	syncNtlk(0)
 
 	lm.Delete()
