@@ -66,11 +66,10 @@ def read_tdf_file(topo_dirpath, arg_str):
     )
     with open(mem_filepath, 'r') as f:
         file_content = f.read()
-    tbs_metis_tdf_found = re.findall(r"^TBS-METIS TDF: (.+)", file_content)
-    metis_tdf_found = re.findall(r"^METIS TDF: (.+)", file_content)
+    tdf_found = re.findall(r"TDF: (.+)", file_content)
 
-    tbs_metis_tdf = float(tbs_metis_tdf_found[0])
-    metis_tdf = float(metis_tdf_found[0])
+    tbs_metis_tdf = float(tdf_found[0])
+    metis_tdf = float(tdf_found[1])
 
     return tbs_metis_tdf, metis_tdf
 
