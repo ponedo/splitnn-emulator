@@ -69,8 +69,8 @@ def read_tdf_file(topo_dirpath, arg_str):
     tbs_metis_tdf_found = re.findall(r"TBS-METIS TDF: (\d+)", file_content)
     metis_tdf_found = re.findall(r"METIS TDF: (\d+)", file_content)
 
-    tbs_metis_tdf = round(int(tbs_metis_tdf_found[0]), 2)
-    metis_tdf = round(int(metis_tdf_found[0]), 2)
+    tbs_metis_tdf = float(tbs_metis_tdf_found[0])
+    metis_tdf = float(metis_tdf_found[0])
 
     return tbs_metis_tdf, metis_tdf
 
