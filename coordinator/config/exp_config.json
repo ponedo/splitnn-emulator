@@ -5,6 +5,7 @@
     "VMagentWorkDir": "/home/cnic/splitnn/agent",
     "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",
     "MemoryReq(GB)": 500,
+    "CrossPMPartitioning": "metis",
     "kernFuncsToMonitor":  [
         ["setup", "cctr", "chroot_fs_refs"],
         ["setup", "splitnn_agent", "wireless_nlevent_flush"],

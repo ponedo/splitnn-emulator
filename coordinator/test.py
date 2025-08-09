@@ -76,6 +76,7 @@ const_options = {
 }
 
 var_options = {
+    #################### Options for the agent ####################
     # Topologies
     "t": [
         # ["isolated", "100"],
@@ -83,6 +84,9 @@ var_options = {
         # ["isolated", "10000"],
         # ["grid", "50", "50"],
         # ["isolated", "3600"],
+        # ["grid", "18", "30"],
+        # ["grid", "40", "50"],
+        # ["grid", "60", "60"],
 
         # ["grid", "10", "10"],
         # ["grid", "20", "20"],
@@ -96,7 +100,7 @@ var_options = {
         # ["grid", "85", "85"],
         # ["grid", "90", "90"],
         # ["grid", "95", "95"],
-        ["grid", "100", "100"],
+        # ["grid", "100", "100"],
         # ["grid", "200", "200"],
 
         # ["clos", "8"],
@@ -105,7 +109,7 @@ var_options = {
         # ["clos", "20"],
         # ["clos", "24"],
         # ["clos", "28"],
-        ["clos", "32"],
+        # ["clos", "32"],
 
         # ["chain", "1251"],
         # ["chain", "2501"],
@@ -127,41 +131,48 @@ var_options = {
 
         # ["as", "small"],
         # ["as", "medium"],
-        ["as", "large"],
-        ["as", "eu"],
-        ["as", "us"],
+        # ["as", "large"],
+        # ["as", "eu"],
+        # ["as", "us"],
     ],
 
-    "a": [
-        # "dynamic",
-        "naive",
+    "s": [
+        SERVER_CONFIG_FILENAME
     ],
 
-    "d": [
-        0,
-        # 1
-    ],
+    # "a": [
+    #     "dynamic",
+    #     "naive",
+    # ],
 
-    "N": [
-        "cctr",
+    # "d": [
+    #     0,
+    #     1
+    # ],
+
+    # "N": [
+        # "cctr",
         # "goctr"
-    ],
+    # ],
 
-    "l": [
-        "ntlbr",
-    ],
+    # "l": [
+    #     "ntlbr",
+    # ],
 
     # "p": [
     #     0,
     #     2,
     #     4,
     #     8
-    # ]
-
-    "s": [
-        SERVER_CONFIG_FILENAME
-    ]
+    # ],
 }
+
+#################### Options for testing ####################
+# "CrossPMPartitioning" : [
+#     "naive",
+#     "METIS",
+#     "TBS",
+# ]
 
 ######################### SSH Helper functions ############################
 
@@ -325,10 +336,9 @@ def print_commands(commands):
         print(f"{ip} in {work_dir}: {cmd}")
 
 
-def output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath):
+def output_tdf_to_file(tdf, tdf_filepath):
     with open(tdf_filepath, 'w') as f:
-        f.write(f"TBS-METIS TDF: {tbs_metis_tdf}\n")
-        f.write(f"METIS TDF: {metis_tdf}\n")
+        f.write(f"TDF: {tdf}\n")
 
 def output_mem_usage_to_file(
     vm_mem_results, exp_mem_results, empty_mem_results, mem_usage_filepath):
@@ -370,8 +380,11 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
 
     # Partition topo to PMs
     nodes, adjacency_list = read_graph_from_topo_file(full_topo_filepath)
+    cross_pm_partition_method = exp_config["CrossPMPartitioning"]
     node2pmid, pmid2nodes, pmid2adjacencylist = partition_graph_across_pm(
-        nodes, adjacency_list, pm_config_list, full_topo_filepath)
+        cross_pm_partition_method,
+        nodes, adjacency_list,
+        pm_config_list, full_topo_filepath)
 
     # Get the optimal VM allocation for each PM in parallel
     pmid2search_results, pmid2vmalloc, n_opt_legal = \
@@ -391,7 +404,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         pmid2search_results, topo_name, full_cur_test_log_dir)
 
     # Alter VM memory and get configration of VMs across all PMs
-    print(f"Partitioning with TBS...")
+    print(f"Partitioning across PMs...")
     cur_ts = time.time()
     vm_config_list = alter_vm_for_all_pms(
         pmid2vmalloc, remote_pms,
@@ -401,7 +414,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     vm_config_filepath = write_vm_config_list_to_file(
         vm_config_list, full_cur_test_log_dir)
     tbs_elapsed_time = time.time() - cur_ts
-    print(f"TBS elapsed for {tbs_elapsed_time}s")
+    print(f"Cross-PM partitioning elapsed for {tbs_elapsed_time}s")
 
     # Start VMs on all PMs
     print(f"Starting VMs...")
@@ -428,12 +441,12 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     prepare_env_on_remote_servers(remote_vms, vm_config_filepath, vm_config_list)
 
     # Partition the topology to VMs
-    tbs_metis_tdf, metis_tdf = partition_topo_across_vms_for_all_pms(
+    tdf = partition_topo_across_vms_for_all_pms(
         nodes, adjacency_list,
         pmid2nodes, pmid2adjacencylist,
         vm_config_list, full_topo_filepath)
     tdf_filepath = os.path.join(full_cur_test_log_dir, "tdf.txt")
-    output_tdf_to_file(tbs_metis_tdf, metis_tdf, tdf_filepath)
+    output_tdf_to_file(tdf, tdf_filepath)
 
     # Distribute sub-topologies to remote VMs
     distribute_sub_topo_to_vms(
@@ -461,10 +474,10 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     # Record host PM usage
     exp_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
-    # # Clean virtual network with agents on remote VMs
-    # print_commands(clean_commands)
-    # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
-    # time.sleep(20) # Wait for a while
+    # Clean virtual network with agents on remote VMs
+    print_commands(clean_commands)
+    execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
+    time.sleep(20) # Wait for a while
 
     # Reap results of current test
     reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
@@ -523,14 +536,16 @@ if __name__ == "__main__":
 
     # Prepare local repository directory for storing test results
     current_time = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    cross_pm_partition_method = exp_config["CrossPMPartitioning"] # naive, METIS, or TBS
     local_result_repo_dir = os.path.join(
         LOCAL_RESULT_DIR,
-        f"pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--m-{FIXED_M_CONF}--k-{FIXED_BBNS_NUM}--{current_time}")
+        f"cppm-{cross_pm_partition_method}--pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--m-{FIXED_M_CONF}--k-{FIXED_BBNS_NUM}--{current_time}")
     os.makedirs(local_result_repo_dir, exist_ok=True)
 
     # Redirect stdout and stderr to the log file
     with open(os.path.join(local_result_repo_dir, TEST_LOG_FILENAME), "w", buffering=1) as f:
         with redirect_stdout(f), redirect_stderr(f):
+            print(f"CrossPMPartitioning: {cross_pm_partition_method}")
             print(f"FIXED_VM_NUM_PER_PM: {FIXED_VM_NUM_PER_PM}")
             print(f"FIXED_M_CONF: {FIXED_M_CONF}")
             print(f"FIXED_BBNS_NUM: {FIXED_BBNS_NUM}")

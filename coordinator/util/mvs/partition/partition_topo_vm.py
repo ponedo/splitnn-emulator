@@ -1,11 +1,9 @@
-import metis
 import shutil
 import argparse
 import time
-import numpy as np
 from .fmt_util import *
 from .compute_tdf import *
-from scipy.sparse import lil_matrix
+from .algorithm import *
 
 
 def create_metis_adjacency_list(nodes, adjacency_list):
@@ -32,39 +30,18 @@ def create_metis_adjacency_list(nodes, adjacency_list):
 
 def partition_graph_across_vm(nodes, adjacency_list, num_partitions, acc_server_num, random=False):
     """Partitions the graph into num_partitions using METIS and writes each subgraph."""
-    node2serverid = {}
     if num_partitions == 1:
+        node2serverid = {}
         server_id = acc_server_num
         for node in nodes:
             node2serverid[node] = server_id
         return node2serverid
 
-    # Convert adjacency list to METIS format with correct indices
-    start_time = time.time()
-    metis_adjacency_list, node_to_index, index_to_node = create_metis_adjacency_list(nodes, adjacency_list)
+    node2serverid = partition_metis(
+        nodes, adjacency_list, num_partitions, random=False)
 
-    # Partition the graph into num_partitions parts using METIS
-    # print("Calling metis.part_graph...")
-    # start_time = time.time()
-    while True:
-        try:
-            if random:
-                # Generate an random integer as seed
-                seed = int(np.random.randint(0, 100))
-                _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions, niter=20, recursive=True, seed=seed)
-            else:
-                _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions, niter=20, recursive=True)
-            break
-        except metis.METIS_InputError as e:
-            print(f"METIS Input Error: {e}")
-            print("Retrying with a different seed...")
-            continue
-    # print("Partitioning completed. Time-cost: ", time.time() - start_time)
-
-    for idx, part in enumerate(parts):
-        node = index_to_node[idx]  # Convert index back to original node ID
-        server_id = part + acc_server_num
-        node2serverid[node] = server_id
+    for node in node2serverid:
+        node2serverid[node] += acc_server_num
 
     return node2serverid
 
@@ -115,25 +92,8 @@ def partition_topo_across_vms_for_all_pms(
     # Scan the adjacency_list, and allocate VXLAN IDs for cross-pm edges and cross-vm-intra-pm edges
     write_subtopos_to_file(nodes, adjacency_list, node2serverid, acc_server_num, input_topo_filepath)
 
-    # Calculate and print TDF of TBS-METIS and METIS
-    tbs_metis_node2server_id = node2serverid
-    metis_node2server_id = partition_graph_across_vm(
-        nodes, adjacency_list, len(vm_config_list), 0)
-    tbs_metis_tdf = compute_tdf(nodes, adjacency_list, tbs_metis_node2server_id, serverid2pmid)
-    metis_tdf = compute_tdf(nodes, adjacency_list, metis_node2server_id, serverid2pmid)
+    # Calculate and print TDF
+    tdf = compute_tdf(nodes, adjacency_list, node2serverid, serverid2pmid)
+    print(f"TDF: {tdf}")
 
-    print(f"TDF of TBS-METIS: {tbs_metis_tdf}")
-    print(f"TDF of METIS: {metis_tdf}")
-
-    return tbs_metis_tdf, metis_tdf
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A script to generate positions and events')
-    parser.add_argument('-f', '--input-file', type=str, required=True, help='Input file name')
-    parser.add_argument('-n', '--num-partition', type=int, required=True, help='# of partitions')
-    args = parser.parse_args()
-
-    input_filepath = args.input_file
-    num_partitions = args.num_partition
-
-    partition_graph_across_vm(input_filepath, num_partitions)
+    return tdf
