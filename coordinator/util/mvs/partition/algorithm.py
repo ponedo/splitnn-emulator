@@ -144,6 +144,10 @@ def trial_cpu_capacity_factors():
 def partition_tbs(
     nodes, adjacency_list,
     pm_config_list, input_topo_filepath):
+
+    distinct_pm_ids = set()
+    for pm_id, _ in enumerate(pm_config_list):
+        distinct_pm_ids.add(pm_id)
     
     # Convert the topology file into metis graph format
     topo_file_dir = os.path.dirname(input_topo_filepath)

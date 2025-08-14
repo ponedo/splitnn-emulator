@@ -29,7 +29,7 @@ def partition_graph_across_pm(
 
     if cross_pm_partition_method.lower() == "naive":
         node2pmid = partition_naive(
-            nodes, adjacency_list)
+            nodes, len(pm_config_list))
     elif cross_pm_partition_method.lower() == "metis":
         node2pmid = partition_metis(
             nodes, adjacency_list, len(pm_config_list), random=False)
