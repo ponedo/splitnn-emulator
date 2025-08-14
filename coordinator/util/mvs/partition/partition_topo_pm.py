@@ -41,24 +41,19 @@ def partition_graph_across_pm(
         print(f"Cross-PM partitioning method {cross_pm_partition_method} is not identified, exiting...")
         exit(1)
 
-    # Print # of nodes in each PM
-    pmid2nodes = {}
-    for node_name, pm_id in node2pmid.items():
-        if pmid2nodes.get(pm_id) is None:
-            pmid2nodes[pm_id] = []
-        pmid2nodes[pm_id].append(node_name)
-    for pm_id in sorted(pmid2nodes.keys()):
-        print(f"PM {pm_id} has {len(pmid2nodes[pm_id])} nodes.")
-
     # Construct the sub-graph of each PM for partitioning
     pmid2nodes = {} # Construct node list
     for pm_id, _ in enumerate(pm_config_list):
         pmid2nodes[pm_id] = []
     for node, pm_id in node2pmid.items():
         pmid2nodes[pm_id].append(node)
+    for pm_id in sorted(pmid2nodes.keys()):
+        print(f"PM {pm_id} has {len(pmid2nodes[pm_id])} nodes.")
     pmid2adjacencylist = {} # Construct adjacency list
+    pmid2edgenum = {} # Construct adjacency list
     for pm_id in pmid2nodes.keys():
         pmid2adjacencylist[pm_id] = {}
+        pmid2edgenum[pm_id] = 0
         for node in pmid2nodes[pm_id]:
             pmid2adjacencylist[pm_id][node] = []
     for node, pm_id in node2pmid.items():
@@ -71,5 +66,8 @@ def partition_graph_across_pm(
                     pmid2adjacencylist[pm_id][node] = []
                 pmid2adjacencylist[pm_id][node].append(neighbor)
                 pmid2adjacencylist[pm_id][neighbor].append(node)
+                pmid2edgenum[pm_id] += 1
+    for pm_id in sorted(pmid2adjacencylist.keys()):
+        print(f"PM {pm_id} has {len(pmid2edgenum[pm_id])} edges.")
 
     return node2pmid, pmid2nodes, pmid2adjacencylist
