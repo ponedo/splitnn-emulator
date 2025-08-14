@@ -68,6 +68,6 @@ def partition_graph_across_pm(
                 pmid2adjacencylist[pm_id][neighbor].append(node)
                 pmid2edgenum[pm_id] += 1
     for pm_id in sorted(pmid2adjacencylist.keys()):
-        print(f"PM {pm_id} has {len(pmid2edgenum[pm_id])} edges.")
+        print(f"PM {pm_id} has {pmid2edgenum[pm_id]} edges.")
 
     return node2pmid, pmid2nodes, pmid2adjacencylist
