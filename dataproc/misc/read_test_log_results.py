@@ -62,15 +62,20 @@ def get_index(input_dir):
 def get_log_topo_and_times(log_path):
     with open(log_path, 'r') as f:
         file_content = f.read()
+
     topo_found = re.findall(r"New test! Options: \{'t': (\[.+\])", file_content)
+    plan_found = re.findall(r"Time for VM allocation optimization: (\d+\.\d+) seconds", file_content)
     vm_start_found = re.findall(r"VM starting consumes (\d+\.\d+)s", file_content)
     vm_destroy_found = re.findall(r"VM destroying consumes (\d+\.\d+)s", file_content)
     setup_found = re.findall(r"Setup done, time: (\d+\.\d+)s", file_content)
+
     topos = ['_'.join(eval(topo_args)) for topo_args in topo_found]
+    plan_times = [round(float(plan_time), 2) for plan_time in plan_found]
     vm_start_times = [round(float(vm_start_time), 2) for vm_start_time in vm_start_found]
     vm_destroy_times = [round(float(vm_destroy_time), 2) for vm_destroy_time in vm_destroy_found]
     setup_times = [round(float(setup_time), 2) for setup_time in setup_found]
-    return topos, vm_start_times, vm_destroy_times, setup_times
+
+    return topos, plan_times, vm_start_times, vm_destroy_times, setup_times
 
 def read_all_logs(argstr2logpath):
     arg_str_keys = argstr2logpath.keys()
@@ -81,11 +86,12 @@ def read_all_logs(argstr2logpath):
         n = args['n']
         m = args['m']
         log_filepath = argstr2logpath[arg_str]
-        for topo, vm_start_time, vm_destroy_time, setup_time in zip(*get_log_topo_and_times(log_filepath)):
+        for topo, plan_time, vm_start_time, vm_destroy_time, setup_time in zip(*get_log_topo_and_times(log_filepath)):
             log_info.append({
                 "n": n,
                 "m": m,
                 "topo": topo,
+                "plan_time": plan_time,
                 "vm_start_time": vm_start_time,
                 "vm_destroy_time": vm_destroy_time,
                 "setup_time": setup_time,
@@ -183,7 +189,7 @@ if __name__ == "__main__":
 
     # Sort or rearrange columns
     df_merged = df_merged.sort_values(by=["topo", "n", "m"])
-    df_merged = df_merged[["n", "m", "topo", "gain", "mem_usage", "vm_start_time", "vm_destroy_time", "setup_time"]]
+    df_merged = df_merged[["n", "m", "topo", "gain", "mem_usage", "plan_time", "vm_start_time", "vm_destroy_time", "setup_time"]]
 
     # Save to CSV
     output_dir = args.output_dir
