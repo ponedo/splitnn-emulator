@@ -71,7 +71,7 @@ def partition_metis(
                 seed = int(np.random.randint(0, 100))
                 _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions, niter=20, recursive=True, seed=seed)
             else:
-                _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions, niter=20, recursive=True)
+                _, parts = metis.part_graph(metis_adjacency_list, nparts=num_partitions)
             break
         except metis.METIS_InputError as e:
             print(f"METIS Input Error: {e}")
