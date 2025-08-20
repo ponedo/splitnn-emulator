@@ -379,14 +379,20 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     full_topo_filepath = generate_topo(topo, LOCAL_TOPO_DIR)
 
     # Partition topo to PMs
+    print(f"Partitioning across all PMs...")
+    cur_ts = time.time()
     nodes, adjacency_list = read_graph_from_topo_file(full_topo_filepath)
     cross_pm_partition_method = exp_config["CrossPMPartitioning"]
     node2pmid, pmid2nodes, pmid2adjacencylist = partition_graph_across_pm(
         cross_pm_partition_method,
         nodes, adjacency_list,
         pm_config_list, full_topo_filepath)
+    cross_pm_partition_time = time.time() - cur_ts
+    print(f"Cross-PM partitioning elapsed for {cross_pm_partition_time}s")
 
     # Get the optimal VM allocation for each PM in parallel
+    print(f"Planning optimal VM configuration...")
+    cur_ts = time.time()
     pmid2search_results, pmid2vmalloc, n_opt_legal = \
         get_optimal_vm_allocation_for_all_pms(
             pmid2nodes, pmid2adjacencylist,
@@ -397,6 +403,8 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         print(f"Warning: Optimal VM number exceeds maximum VM number on some PMs. Skipping current test.")
         print(f"n_opt_legal: {n_opt_legal}")
         return
+    opt_time = time.time() - cur_ts
+    print(f"Time for VM allocation optimization: {opt_time:.2f} seconds")
 
     # Store the vm allocation result
     topo_name = '_'.join(var_opts['t'])
@@ -404,7 +412,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         pmid2search_results, topo_name, full_cur_test_log_dir)
 
     # Alter VM memory and get configration of VMs across all PMs
-    print(f"Partitioning across PMs...")
+    print(f"Partitioning across all VMs...")
     cur_ts = time.time()
     vm_config_list = alter_vm_for_all_pms(
         pmid2vmalloc, remote_pms,
@@ -413,8 +421,8 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     pmid2vms = get_pmid2vms(pm_config_list, vm_config_list)
     vm_config_filepath = write_vm_config_list_to_file(
         vm_config_list, full_cur_test_log_dir)
-    tbs_elapsed_time = time.time() - cur_ts
-    print(f"Cross-PM partitioning elapsed for {tbs_elapsed_time}s")
+    cross_vm_partition_time = time.time() - cur_ts
+    print(f"Cross-VM partitioning elapsed for {cross_vm_partition_time}s")
 
     # Start VMs on all PMs
     print(f"Starting VMs...")

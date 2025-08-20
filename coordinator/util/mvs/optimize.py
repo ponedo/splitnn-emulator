@@ -166,7 +166,6 @@ def get_optimal_vm_allocation_for_all_pms(
     FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM):
 
     # Get maximum VM number on each VM
-    cur_ts = time.time()
     pmid2search_results = {}
     pmid2vmalloc = {}
     n_opt_legal = {}
@@ -201,10 +200,6 @@ def get_optimal_vm_allocation_for_all_pms(
     #     if n_opt > max_vm_num:
     #         print(f"Warning: Optimal VM number {n_opt} exceeds maximum VM number {max_vm_num} on PM {pmid}. Skipping current test.")
     #         n_opt_legal[pmid] = False
-
-    # Record optimization time
-    opt_time = time.time() - cur_ts
-    print(f"Time for VM allocation optimization: {opt_time:.2f} seconds")
 
     return pmid2search_results, pmid2vmalloc, n_opt_legal
 
