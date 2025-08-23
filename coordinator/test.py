@@ -482,10 +482,10 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
     # Record host PM usage
     exp_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
 
-    # Clean virtual network with agents on remote VMs
-    print_commands(clean_commands)
-    execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
-    time.sleep(20) # Wait for a while
+    # # Clean virtual network with agents on remote VMs
+    # print_commands(clean_commands)
+    # execute_command_on_multiple_machines(remote_vms, clean_commands) # Clean virtual network
+    # time.sleep(20) # Wait for a while
 
     # Reap results of current test
     reap_one_test_results(remote_vms, vm_config_list, full_cur_test_log_dir)
