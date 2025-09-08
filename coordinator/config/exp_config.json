@@ -1,6 +1,6 @@
 {
     "VMuser": "cnic",
-    "VMpassword": "1qazXSW@",
+    "VMpassword": "thisisapassword",
     "VMphyIntf": "enp1s0",
     "VMagentWorkDir": "/home/cnic/splitnn/agent",
     "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",

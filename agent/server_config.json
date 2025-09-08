@@ -3,7 +3,7 @@
         {
             "ipAddr": "10.10.30.148",
             "user": "cnic",
-            "password": "1qazXSW@",
+            "password": "thisisapassword",
             "phyIntf": "enp1s0",
             "agentWorkDir": "/home/cnic/splitnn/agent",
             "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",
