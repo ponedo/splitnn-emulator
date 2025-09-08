@@ -1,6 +1,5 @@
 coordinator/mnt/
 coordinator/config/exec_config.json
-coordinator/config/server_config.json
 coordinator/topo/*.*
 coordinator/scripts/*.py
 coordinator/results*

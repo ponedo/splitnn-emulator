@@ -1,8 +1,6 @@
-# Code of SplitNN (APNet '25 Paper)
+# Code of SplitNN
 
-## Overview
-This repository provides code of experiments in our APNet '25 paper--[SplitNN: Single-Machine Network Emulation at Scale with Minute-Level Construction of 10K-Node Virtual Networks]().
-
+## 1. Overview
 
 SplitNN is a new methodological framework that enables fast construction of large-scale virtual networks (VNs) for network emulation. SplitNN leverages two "splitting" methods on a physical machine to accelerate VN construction:
 
@@ -12,103 +10,27 @@ SplitNN is a new methodological framework that enables fast construction of larg
 
 With multi-VM splitting and multi-netns splitting architecture, construction of 10K-node VNs can be done within minute-level time-cost.
 
-## Project Structure
+## 2. Project Structure
 
 The project contains following directories:
 
-1. agent: a Golang project that construct/destruct virtual networks on a slave VM. 
+1. vm_manager: a series of shell scripts that start/destroy VMs, as well as configuring settings of VMs (such as CPU/Memory).
 
 2. coordinator: a python program run by the master VM that (1) distribute topology infomation and reap VN construction/destruction time-costs from slave VMs; (2) manage experiment workflow.
 
-3. dataproc: a python program that output tables and figures with experimental results (just ignore it if you feel it hard to use).
+3. agent: a Golang project that construct/destruct virtual networks on a slave VM. 
 
-## Setting up Your VM Cluster
+4. dataproc: a python program that output tables and figures with experimental results (just ignore it if you feel it hard to use).
 
-Before running the experiments, please setup a VM cluster including a master VM and some slave VMs (the master can also be a slave). In future we are looking forward to providing an script for setup automation. But currently, please CAREFULLY with following steps to setup your environment:
+## 3. How To Run the Project
 
-1. Git clone this repo on all VMs.
+Running the project include following steps:
 
-2. Configure VM infomation in [coordinator/server_config.json](coordinator/server_config.json). Example:
+1. [Setup cluster](doc/setup_cluster.md);
 
-    ```json
-    "ipAddr": "10.10.30.144", // IP address of the slave VM
-    "user": "cnic",
-    "password": "XXXXXXXXXXX",
-    "phyIntf": "enp1s0", // The network interface where ipAddr is bounded
-    "agentWorkDir": "/home/cnic/split-nn/agent", // The path to the "agent" directory in this project on your VM
-    "dockerImageName": "ponedo/bird-ubuntu22", // The image name of vnodes, can be arbitrary image on dockerhub or your own hub
-    "kernFuncsToMonitor":  [
-        ["setup", "cctr", "chroot_fs_refs"],
-        ["setup", "splitnn_agent", "wireless_nlevent_flush"],
-        ["setup", "splitnn_agent", "fib6_clean_tree"],
-        ["clean", "", "br_vlan_flush"]
-    ], // Used for recording kernel function time-cost. Just keep them as are.
-    "server_best_bbns_factor": 2.353, // The measured k_opt argument, which influences the number of backbone namespaces when constructing a VN (see "Measuring platform-specific parameters" subsection below and check the paper for more details).
-    ```
+2. [Setup the coordinator](doc/setup_coordinator.md);
 
-3. **(Important)** Setup an SSH key on master VM, and copy the public key to all slave VMs. Since SplitNN is a distributive solution spanning many VMs, this step enables automatic communication between VMs. Once configured SSH keys, please execute the following commnand on master VM for all slave VMs to check whether password-free communication is enabled:
-
-    ```bash
-    # When executing this command on the master, an interactive prompt requesting password should NOT come out!
-    ssh ${USER}@${SLAVE_VM_IP} 'echo hello'
-    ```
-
-4. Pull the docker image configured in server_config.json on all slave VMs.
-
-5. Setup a python virtual enviroment and install python dependencies on the master VM with following commands:
-    ```bash
-    cd /path/to/repository
-    python -m venv tstenv
-    source tstenv/bin/activate
-    pip install -r requirements.txt
-    ```
-    Operations on the master VM should be executed in this virtual environment
-
-6. Install dependencies of topology partitioning for multi-VM splitting on the master VM:
-
-    6.1 Install [GKlib](https://github.com/KarypisLab/GKlib):
-
-    ```bash
-    git clone https://github.com/KarypisLab/GKlib.git
-    cd GKlib
-    # For x86 platform
-    make config prefix=~/local CONFIG_FLAGS='-D BUILD_SHARED_LIBS=ON'
-    # For ARM platform
-    make config prefix=~/local CONFIG_FLAGS='-D BUILD_SHARED_LIBS=ON -D NO_X86=1'
-    make
-    make install
-    ```
-
-    6.2 Install [METIS](https://github.com/KarypisLab/METIS):
-
-    ```bash
-    git clone https://github.com/KarypisLab/METIS.git
-    cd METIS
-    sed -i '/add_library(metis ${METIS_LIBRARY_TYPE} ${metis_sources})/ s/$/\ntarget_link_libraries(metis GKlib)/' libmetis/CMakeLists.txt
-    sed -i '/^CONFIG_FLAGS \?= / s,$, -DCMAKE_BUILD_RPATH=/usr/local/lib -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=ON,' Makefile
-    make config shared=1 cc=gcc prefix=~/local gklib_path=/usr/local
-    make install
-    echo 'export METIS_DLL=~/local/lib/libmetis.so' >> ~/.bashrc
-    source ~/.bashrc
-    ```
-
-7. Install dependencies of multi-machine topology partitioning on the master VM:
-
-    7.1 Clone and compile a modified version of [TBR-TBS](https://github.com/ponedo/tbs):
-    ```bash
-    git clone git@github.com:ponedo/tbs.git
-    cd tbs
-    mkdir build
-    cd build
-    cmake .. && make
-    ```
-
-    7.2 Set global variable TBS_BIN_DIR in [coordinator/scripts/partition/partition_topo_pm.py](coordinator/scripts/partition/partition_topo_pm.py) to the build path of your TBR-TBS repository:
-    ```python
-    TBS_BIN_DIR = "/path/to/tbs/build"
-    ```
-
-    7.3 Install Gurobi optimizer, which is a necessary dependency of [TBR-TBS](https://github.com/tbs2022/tbs) topoology partitioning algorithm. Please install a *full-licensed* Gurobi optimizer (Please find help at [How do I install Gurobi Optimizer?](https://support.gurobi.com/hc/en-us/articles/4534161999889-How-do-I-install-Gurobi-Optimizer)).
+3. [Setup and run experiments](doc/setup_experiment.md);
 
 ## Usage
 
@@ -212,15 +134,3 @@ Before running the experiments, please setup a VM cluster including a master VM 
     ```
 
 2. Modify agent/server_config. Set only one slave VM (recommend using master VM as the slave for measurement)
-
-3. Execute measurement for parameter *X* (increasing rate of vlink construction time w.r.t. the number of system-wide netns’es):
-    ```bash
-    bin/splitnn_agent -o node-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
-    ```
-    the results will be written in agent/tmp/node-measure_log.txt.
-
-4. Execute measurement for parameter *Y* (ncreasing rate of per-vlink construction time with respect to the pre-existing vlink number in the BBNS that carries the vlink.):
-    ```bash
-    bin/splitnn_agent -o link-measure -P 10000 -Q 1250 -S 9 -N cctr -l ntlbr -s server_config.json
-    ```
-    the results will be written in agent/tmp/link-measure_log.txt.
