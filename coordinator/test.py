@@ -62,12 +62,12 @@ parser.add_argument(
 args = parser.parse_args()
 
 FIXED_VM_NUM_PER_PM = args.fixed_vm_num # If set to 0, use the optimal VM number; if set > 0, use the fixed VM number
-FIXED_M_CONF = args.fixed_m_conf # If set to 0, use the optimal memory configuration; if set > 0, use the fixed number
+FIXED_M = args.fixed_m # If set to 0, use the optimal memory configuration for each VM; if set > 0, use the fixed number
 FIXED_BBNS_NUM = args.fixed_bbns_num # If set to 0, use the optimal BBNS number; if set > 0, use the fixed BBNS number
 
 assert FIXED_VM_NUM_PER_PM >= 0
-assert FIXED_M_CONF >= 0
-assert not (FIXED_VM_NUM_PER_PM == 0 and FIXED_M_CONF > 0)
+assert FIXED_M >= 0
+assert not (FIXED_VM_NUM_PER_PM == 0 and FIXED_M > 0)
 assert FIXED_BBNS_NUM >= 0
 
 ######################### Agent options ############################
@@ -397,7 +397,7 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         get_optimal_vm_allocation_for_all_pms(
             pmid2nodes, pmid2adjacencylist,
             pm_config_list, exp_config,
-            FIXED_VM_NUM_PER_PM, FIXED_M_CONF, FIXED_BBNS_NUM
+            FIXED_VM_NUM_PER_PM, FIXED_M, FIXED_BBNS_NUM
         )
     if not all(n_opt_legal.values()):
         print(f"Warning: Optimal VM number exceeds maximum VM number on some PMs. Skipping current test.")
@@ -547,7 +547,7 @@ if __name__ == "__main__":
     cross_pm_partition_method = exp_config["CrossPMPartitioning"] # naive, METIS, or TBS
     local_result_repo_dir = os.path.join(
         LOCAL_RESULT_DIR,
-        f"cppm-{cross_pm_partition_method}--pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--m-{FIXED_M_CONF}--k-{FIXED_BBNS_NUM}--{current_time}")
+        f"cppm-{cross_pm_partition_method}--pm-{len(pm_config_list)}--n-{FIXED_VM_NUM_PER_PM}--m-{FIXED_M}--k-{FIXED_BBNS_NUM}--{current_time}")
     os.makedirs(local_result_repo_dir, exist_ok=True)
 
     # Redirect stdout and stderr to the log file
@@ -555,6 +555,6 @@ if __name__ == "__main__":
         with redirect_stdout(f), redirect_stderr(f):
             print(f"CrossPMPartitioning: {cross_pm_partition_method}")
             print(f"FIXED_VM_NUM_PER_PM: {FIXED_VM_NUM_PER_PM}")
-            print(f"FIXED_M_CONF: {FIXED_M_CONF}")
+            print(f"FIXED_M: {FIXED_M}")
             print(f"FIXED_BBNS_NUM: {FIXED_BBNS_NUM}")
             run_all_tests(local_result_repo_dir, pm_config_list, exp_config)

@@ -47,11 +47,10 @@ EOF
 
 where `/path/to/qcow2` is the path to the .qcow2 VM disk file mentioned in [setup cluster tutorial](./setup_cluster.md#1-preparing-the-vm-image)
 
-
 ## 2. Pull the repository in master VM
 First, enter the master VM.
 
-If you are using the .qcow2 downloaded from our links [setup cluster tutorial](./setup_cluster.md#11-using-the-out-of-the-box-image-recommended). The login user is `XXXX` and the login password is `XXXX`
+If you are using the .qcow2 downloaded from our links [setup cluster tutorial](./setup_cluster.md#11-using-the-out-of-the-box-image-recommended). The default login user is `cnic` and the login password is `thisisapassword`
 
 Then, pull the repository:
 ```bash
@@ -91,10 +90,10 @@ pip install -r requirements.txt
         "servers": [
             {
                 "ipAddr": "10.10.30.148", // IP addresss of this master VM
-                "user": "XXXX", // Login user of the master VM
-                "password": "XXXX", // Password of the master VM
+                "user": "cnic", // Login user of the master VM
+                "password": "thisisapassword", // Password of the master VM
                 "phyIntf": "enp1s0", // The interface master VM uses to access
-                "agentWorkDir": "/home/XXXX/splitnn/agent", // The directory to agent 
+                "agentWorkDir": "/path/to/repository/agent", // The working directory of agent
                 "dockerImageName": "ponedo/frr-ubuntu20:tinycmd",
                 "kernFuncsToMonitor":  [
                     ["setup", "cctr", "chroot_fs_refs"],
@@ -128,15 +127,15 @@ The master VM should be able to connect to all physical machines in your network
     "physicalMachines": [
         {
             "ipAddr": "192.168.1.30", // IP address of the physical machine
-            "user": "XXXX", // Login user (need to be a privileged user, e.g. root)
-            "password": "XXXX", // Login password
-            "vmManagerWorkDir": "/path/to/vm_manager", // The path to vm_manager directory
+            "user": "root", // Login user (need to be a privileged user, using "root" is recommended)
+            "password": "thisisapassword", // Login password
+            "vmManagerWorkDir": "/path/to/vm_manager", // The path to vm_manager directory on the physical machine
             "maxVMNum": 30, // Max VM number that can be created on this physical machine
             "coreNum": 128, // Available core number on this physcial machine
             "Memory": 968, // Available RAM on this physical machine
             "Parameters": {
                 /* Measured theta(m) parameters on the physical machine*/
-                "theta_m_conf_table": {
+                "theta_m_table": {
                     "8": 2.814,
                     "25": 3.190,
                     "50": 3.746,
@@ -160,6 +159,6 @@ The `vmManagerWorkDir` is configured as the path to the root directory of vm_man
 
 The `maxVMNum` is recommended to be configured no greater than `coreNum / 4`, so that each VM can have 4 cores.
 
-The `theta_m_conf_table` is a table mapping per-VM configured memory to its memory overhead (see [setup cluster tutorial](./setup_cluster.md#5-measure-the-θm-parameter)).
+The `theta_m_table` is a table mapping per-VM configured memory to its memory overhead (see [setup cluster tutorial](./setup_cluster.md#6-measure-the-θm-parameter)).
 
 The `X`, `Y`, and `Z` are contributors of per-vlink construction cost (see [setup coordinator tutorial](./setup_coordinator.md#4-build-the-agent-measure-the-parameters))

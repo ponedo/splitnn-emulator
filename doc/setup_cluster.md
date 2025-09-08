@@ -18,8 +18,10 @@ To get the *.qcow2* disk. We provide two options: (1) using the out-of-the-box i
 ### 1.1 Using the out-of-the-box image (Recommended)
 
 We provide out-of-the-box *.qcow2* disk at links below:
-+ For AMD64 platform: download [here](https://pan.baidu.com/s/1UzGOi3n-xkWituL95oxc0Q?pwd=in3p).
-+ For ARM64 platform: downlodd [here](https://pan.baidu.com/s/1ATm0BedgLu0KbBMVlJvdmw?pwd=nn5p).
+
++ For AMD64 platform: download [here](https://pan.baidu.com/s/1NndHBaLWU-fMK8Pdq0eedQ?pwd=hdqf).
+
++ For ARM64 platform: downlodd [here](https://pan.baidu.com/s/1N-uPtPny88C-JMAFFQPZ-w?pwd=hixx).
 
 After downloading, put the downloaded .qcow2 file at /var/lib/libvirt/images/.
 
@@ -135,38 +137,49 @@ Cuurently, we found it is also necessary to provide NVRAM files for VMs on ARM p
 
 ## 3. Configure the VM manager on physical machine
 
-1. On your physical machine, clone the code of VM manager at a certain path (say /path/to/vm_manager):
+On your physical machine, clone the code of VM manager at a certain path (say /path/to/vm_manager):
+```bash
+git clone <url_to_this_repository>
+cp splitnn/vm_manager /path/to/vm_manager
+```
 
-    ```bash
-    git clone <url_to_this_repository>
-    cp splitnn/vm_manager /path/to/vm_manager
-    ```
+Modify the configuration of the VM manager
+```bash
+vim /path/to/vm_manager/vm_config.sh # Modify contents on demand
+```
 
-2. Modify the configuration of the VM manager
+The explanation of all configurable fields are written in the vm_config.sh as comments. Please read them carefully. You can set VM network configuration on demand, as long as the master VM can reach the subnet of worker VMs. Note that if you put master VM and worker VMs in same subnet, please avoid accidential conflict of IP addresses between master VM and worker VMs. We recommend assign the master VM with *".2"* address, and set VM_IP_OFFSET with 4, which will assign worker VMs with *".4"*, *".6* , *".8"*... addresses.
 
-    ```bash
-    vim /path/to/vm_manager/vm_config.sh # Modify contents on demand
-    ```
+Example: suppose you are assigning master VM with `192.168.1.2`, and wish to assign worker VMs with `192.168.1.4`, `192.168.1.6`, `192.168.1.8`... configure as:
+```bash
+VM_PREFIX="splitnn-vm"
+BRIDGE_IF="br1" # Bridge interface for VM networking, other example: BRIDGE_IF="reals-vm-br"
+RAW_VIRTIO_IP_PREFIX="192.168.1." # The subnet for the VMs
+SUBNET_MASK="16" # The subnet mask length for the VMs
+RAW_MAC_PREFIX="52:54:00:ab:73:" # The MAC address prefix for the VMs
+DNS="159.226.8.7" # The DNS server for the VMs
+GATEWAY="192.168.1.1" # The network gateway for the VMs
 
-    The explanation of all configurable fields are written in the vm_config.sh as comments. Please read them carefully. You can set VM network configuration on demand, as long as the master VM can reach the subnet of worker VMs. Note that if you put master VM and worker VMs in same subnet, please avoid accidential conflict of IP addresses between master VM and worker VMs. We recommend assign the master VM with *".2"* address, and set VM_IP_OFFSET with 4, which will assign worker VMs with *".4"*, *".6* , *".8"*... addresses.
+# The IP address of the i-th VM is calculated as:
+# VM_IP = RAW_VIRTIO_IP_PREFIX :: (i * 2 + VM_IP_OFFSET)
+# Be aware that VM_IP of the "MAX_VM_NUM"-th VM should not exceed 255!!!!!
+VM_IP_OFFSET=4
+```
 
-    Example: suppose you are assigning master VM with `192.168.1.2`, and wish to assign worker VMs with `192.168.1.4`, `192.168.1.6`, `192.168.1.8`... configure as:
-    ```bash
-    VM_PREFIX="splitnn-vm"
-    BRIDGE_IF="br1" # Bridge interface for VM networking, other example: BRIDGE_IF="reals-vm-br"
-    RAW_VIRTIO_IP_PREFIX="192.168.1." # The subnet for the VMs
-    SUBNET_MASK="16" # The subnet mask length for the VMs
-    RAW_MAC_PREFIX="52:54:00:ab:73:" # The MAC address prefix for the VMs
-    DNS="159.226.8.7" # The DNS server for the VMs
-    GATEWAY="192.168.1.1" # The network gateway for the VMs
+## 3. Define the VMs on physical machine
+After configuring the VM manager, it is time to define the VMs (create a VM pool) on the physical machine:
+```bash
+cd /path/to/vm_manager/
+./vm_definer/define_vm.sh
+```
 
-    # The IP address of the i-th VM is calculated as:
-    # VM_IP = RAW_VIRTIO_IP_PREFIX :: (i * 2 + VM_IP_OFFSET)
-    # Be aware that VM_IP of the "MAX_VM_NUM"-th VM should not exceed 255!!!!!
-    VM_IP_OFFSET=4
-    ```
+If the VM pool is no longer needed, you can undefine the VMs by commands below:
+```bash
+cd /path/to/vm_manager/
+./vm_definer/undefine_vm.sh
+```
 
-# 4. Configure multiple physical machines in one cluster (Optional)
+## 4. Configure multiple physical machines in one cluster (Optional)
 
 If you are using a multi-machine cluster, please execute step 3 for each physical machine.
 

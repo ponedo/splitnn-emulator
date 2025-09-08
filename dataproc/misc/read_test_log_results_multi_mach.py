@@ -103,7 +103,7 @@ def read_gain(vm_alloc_filepath, arg_str):
     elif n > 0 and m == 0:
         gain = df[df['n'] == n]['Gain'].iloc[0]
     elif n > 0 and m > 0:
-        gain = df[(df['n'] == n) & (df['m_conf'] == m)]['Gain'].iloc[0]
+        gain = df[(df['n'] == n) & (df['m'] == m)]['Gain'].iloc[0]
     return gain
 
 def read_vminfo_topo(topo_dirpath, arg_str):
@@ -155,7 +155,7 @@ def output_results(argstr2times, output_dir):
             x[1][0], # topo
             argstr2dict(x[0])['pm'], # PM num
             argstr2dict(x[0])['n'], # VM num
-            argstr2dict(x[0])['m'], # M_conf
+            argstr2dict(x[0])['m'], # m
         ))
     with open(output_filepath, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)

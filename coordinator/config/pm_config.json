@@ -9,7 +9,7 @@
             "coreNum": 128,
             "Memory": 968,
             "Parameters": {
-                "theta_m_conf_table": {
+                "theta_m_table": {
                     "8": 2.814,
                     "25": 3.190,
                     "50": 3.746,

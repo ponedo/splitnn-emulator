@@ -40,9 +40,9 @@ def destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms):
     )
 
 def alter_vm_cmd_for_pm(vm_alloc):
-    vm_num, m_conf, vcpu_num = vm_alloc
-    m_conf = 1000000 * m_conf # convert GB to KB
-    return f"./vm_operator/alter_vm.sh {vm_num} {m_conf} {vcpu_num}"
+    vm_num, m, vcpu_num = vm_alloc
+    m = 1000000 * m # convert GB to KB
+    return f"./vm_operator/alter_vm.sh {vm_num} {m} {vcpu_num}"
 
 def alter_vm_for_all_pms(
     pmid2vmalloc, remote_pms,

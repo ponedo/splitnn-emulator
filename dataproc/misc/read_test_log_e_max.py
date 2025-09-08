@@ -87,7 +87,7 @@ def output_results(argstr2times, output_dir):
         key=lambda x: (
             x[1][0], # topo
             argstr2dict(x[0])['n'], # VM num
-            argstr2dict(x[0])['m'], # M_conf
+            argstr2dict(x[0])['m'], # m
         ))
     with open(output_filepath, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)

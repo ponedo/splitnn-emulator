@@ -23,8 +23,8 @@ vim exp_config.json # Write according to the exp_config.json contents shown belo
 
 ```json
 {
-    "VMuser": "XXXX", // Login users for all worker VMs
-    "VMpassword": "XXXX", // Password users for all worker VMs
+    "VMuser": "cnic", // Login users for all worker VMs
+    "VMpassword": "thisisapassword", // Password users for all worker VMs
     "VMphyIntf": "enp1s0", // The interface that each worker VM uses to connect to other VMs
     "VMagentWorkDir": "/home/cnic/splitnn/agent", // The agent subdirectory path in repository within each worker VM
     "dockerImageName": "ponedo/frr-ubuntu20", // The docker image used for virtual node construction
