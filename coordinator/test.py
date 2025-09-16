@@ -54,7 +54,7 @@ parser.add_argument(
     '-n', '--fixed-vm-num', type=int, default=0,
     help='Fixed VM number per PM. If set to 0, use the optimal VM number; if set > 0, use the fixed VM number')
 parser.add_argument(
-    '-m', '--fixed-m-conf', type=int, default=0,
+    '-m', '--fixed-m', type=int, default=0,
     help='Fixed memory configuration per PM. If set to 0, use the optimal config; if set > 0, use the fixed number')
 parser.add_argument(
     '-k', '--fixed-bbns-num', type=int, default=0,
@@ -89,7 +89,7 @@ var_options = {
         # ["grid", "60", "60"],
 
         # ["grid", "10", "10"],
-        # ["grid", "20", "20"],
+        ["grid", "20", "20"],
         # ["grid", "30", "30"],
         # ["grid", "40", "40"],
         # ["grid", "50", "50"],
@@ -496,13 +496,13 @@ def one_test(var_opts, remote_pms, local_result_repo_dir, pm_config_list, exp_co
         remote_vm.close_connection()
     time.sleep(5) # Wait for a while
 
-    # Destroy VMs and record destroy time
-    print(f"Destroying VMs...")
-    cur_ts = time.time()
-    destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
-    vm_destroy_elapsed_time = time.time() - cur_ts
-    time.sleep(10)
-    print(f"VM destroying consumes {vm_destroy_elapsed_time}s")
+    # # Destroy VMs and record destroy time
+    # print(f"Destroying VMs...")
+    # cur_ts = time.time()
+    # destroy_vms_for_all_pms(remote_pms, pm_config_list, pmid2vms)
+    # vm_destroy_elapsed_time = time.time() - cur_ts
+    # time.sleep(10)
+    # print(f"VM destroying consumes {vm_destroy_elapsed_time}s")
 
     # Record PM memory usage
     empty_mem_results = get_mem_usage_of_all_pms(remote_pms, pm_config_list)
